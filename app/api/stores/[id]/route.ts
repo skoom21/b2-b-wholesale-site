@@ -29,7 +29,10 @@ export async function GET(
         .eq('id', user.id)
         .single()
       
-      if (profile?.role === 'retailer' && profile.store_id !== id) {
+      const role = profile?.role || user.user_metadata?.role || 'retailer'
+      const isAdmin = role === 'admin' || role === 'manager'
+      
+      if (!isAdmin && profile?.store_id !== id) {
         return apiForbidden('You can only access your own store')
       }
     }
@@ -70,7 +73,8 @@ export async function PUT(
       .eq('id', user!.id)
       .single()
     
-    const isAdmin = profile?.role === 'admin'
+    const role = profile?.role || user!.user_metadata?.role || 'retailer'
+    const isAdmin = role === 'admin' || role === 'manager'
     const isOwnStore = profile?.store_id === id
     
     // Only admin or store owner can update
@@ -82,12 +86,17 @@ export async function PUT(
     const updateData: any = {}
     
     // Fields that both admin and retailer can update
-    const commonFields = ['name', 'phone', 'address', 'city', 'province', 'postal_code', 'country', 'website']
+    const commonFields = ['name', 'phone', 'address_line1', 'address_line2', 'city', 'province', 'postal_code', 'country', 'website']
     commonFields.forEach(field => {
       if (body[field] !== undefined) {
         updateData[field] = body[field]
       }
     })
+    
+    // Support 'address' field as alias for 'address_line1' for backward compatibility
+    if (body.address !== undefined && body.address_line1 === undefined) {
+      updateData.address_line1 = body.address
+    }
     
     // Admin-only fields
     if (isAdmin) {
@@ -115,10 +124,10 @@ export async function PUT(
       }
       
       // Validate store_type if provided
-      if (body.store_type && !['retail', 'restaurant', 'wholesale', 'online'].includes(body.store_type)) {
+      if (body.store_type && !['grocery_store', 'restaurant', 'distributor', 'other'].includes(body.store_type)) {
         return apiValidationError([{
           field: 'store_type',
-          message: 'Invalid store type. Must be one of: retail, restaurant, wholesale, online'
+          message: 'Invalid store type. Must be one of: grocery_store, restaurant, distributor, other'
         }])
       }
     }

@@ -1,67 +1,88 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient, getAuthUser, requireAdmin } from '@/lib/api/auth'
+import { createServerSupabaseClient, getAuthUser, getUserRole, requireAdmin } from '@/lib/api/auth'
 import { apiSuccess, apiError, apiBadRequest, apiValidationError } from '@/lib/api/response'
-import { parsePagination, calculatePagination } from '@/lib/api/pagination'
+import { parsePagination, calculatePagination, getPaginationRange } from '@/lib/api/pagination'
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
     
-    // CRITICAL: Must call getUser() to establish the auth session in Supabase
-    // This ensures auth.uid() is available in RLS policies
+    // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError) {
+    if (authError || !user) {
       console.error('[STORES API] Auth error:', authError)
-    }
-    
-    if (!user) {
-      console.error('[STORES API] No authenticated user')
       return apiError('Unauthorized', 'UNAUTHORIZED', 401)
     }
     
-    console.log('[STORES API] Authenticated user:', user.id, 'Email:', user.email)
+    // Get user's profile for reliable role check
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
     
-    // Debug: Check what auth.uid() sees in the database session
-    const { data: authDebug } = await supabase.rpc('debug_auth_context')
-    console.log('[STORES API] Database auth context:', authDebug)
+    const role = profile?.role || user.user_metadata?.role || 'retailer'
     
-    const { searchParams } = new URL(request.url)
-    const { page, limit, offset } = parsePagination(searchParams)
+    // Parse query parameters
+    const searchParams = request.nextUrl.searchParams
+    const { page, perPage } = parsePagination(searchParams)
+    const { from, to } = getPaginationRange(page, perPage)
     
-    // Extract filters
     const status = searchParams.get('status')
     const tier = searchParams.get('tier')
     const storeType = searchParams.get('store_type')
     const search = searchParams.get('search')
     
-    // Use the database function instead of query builder
-    const { data: result, error } = await supabase.rpc('get_stores_for_user', {
-      p_status: status,
-      p_tier: tier,
-      p_store_type: storeType,
-      p_search: search,
-      p_limit: limit,
-      p_offset: offset
-    })
+    // Build query
+    let query = supabase
+      .from('stores')
+      .select('*', { count: 'exact' })
     
-    if (error) {
-      console.error('[STORES API] Function error:', error)
-      throw error
+    // Admins and Managers see all stores
+    // Retailers see only their own stores
+    if (role === 'retailer') {
+      query = query.eq('user_id', user.id)
     }
     
-    console.log('[STORES API] Function returned:', result)
+    // Apply filters
+    if (status && status !== 'all') {
+      query = query.eq('status', status)
+    }
     
-    const stores = result?.stores || []
-    const totalCount = result?.total || 0
+    if (tier) {
+      query = query.eq('tier', tier)
+    }
     
-    const pagination = calculatePagination(Number(totalCount), page, limit)
+    if (storeType) {
+      query = query.eq('store_type', storeType)
+    }
     
-    return apiSuccess({ stores, pagination })
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
+    }
+    
+    // Apply sorting and pagination
+    const { data: stores, count, error: dbError } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to)
+    
+    if (dbError) {
+      console.error('[STORES API] Database error:', dbError)
+      return apiError('Failed to fetch stores', 'DATABASE_ERROR', 500, dbError)
+    }
+    
+    const pagination = calculatePagination(count || 0, page, perPage)
+    
+    // Return structured response
+    return apiSuccess({ 
+      stores: stores || [], 
+      pagination 
+    })
     
   } catch (error: any) {
-    console.error('[STORES API] Error:', error)
-    return apiError(error.message || 'Failed to fetch stores', 'FETCH_ERROR', 500)
+    console.error('[STORES API] Internal error:', error)
+    return apiError(error.message || 'Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -124,11 +145,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Validate store_type if provided
-    const validStoreTypes = ['retail', 'restaurant', 'wholesale', 'online']
+    const validStoreTypes = ['grocery_store', 'restaurant', 'distributor', 'other']
     if (body.store_type && !validStoreTypes.includes(body.store_type)) {
       return apiValidationError([{
         field: 'store_type',
-        message: 'Invalid store type. Must be one of: retail, restaurant, wholesale, online'
+        message: 'Invalid store type. Must be one of: grocery_store, restaurant, distributor, other'
       }])
     }
     
@@ -145,7 +166,7 @@ export async function POST(request: NextRequest) {
         province: body.province,
         postal_code: body.postal_code,
         country: body.country || 'Canada',
-        store_type: body.store_type || 'retail',
+        store_type: body.store_type || 'other',
         tier: body.tier || 'standard',
         status: body.status || 'pending',
         tax_number: body.tax_number,
