@@ -138,25 +138,25 @@ export async function PATCH(
     
     // Validate status if provided
     if (body.status) {
-      const validStatuses = ['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'cancelled']
+      const validStatuses = ['pending', 'processing', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled']
       if (!validStatuses.includes(body.status)) {
         return apiValidationError([{
           field: 'status',
           message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
         }])
       }
-      
+
       // Validate status workflow (admin only)
       if (role === 'admin') {
         const statusFlow: { [key: string]: string[] } = {
-          'pending': ['processing', 'cancelled'],
+          'pending': ['processing', 'confirmed', 'cancelled'],
           'processing': ['confirmed', 'cancelled'],
-          'confirmed': ['shipped', 'cancelled'],
-          'shipped': ['delivered'],
+          'confirmed': ['out_for_delivery', 'cancelled'],
+          'out_for_delivery': ['delivered', 'cancelled'],
           'delivered': [],
           'cancelled': []
         }
-        
+
         const allowedTransitions = statusFlow[order.status] || []
         if (!allowedTransitions.includes(body.status)) {
           return apiBadRequest(
@@ -164,42 +164,49 @@ export async function PATCH(
             `Allowed transitions: ${allowedTransitions.join(', ') || 'none'}`
           )
         }
-        
+
         // Reserve stock when order is confirmed
         if (body.status === 'confirmed' && order.status !== 'confirmed') {
           try {
             await supabase.rpc('reserve_order_stock', { p_order_id: id })
           } catch (stockError: any) {
-            console.error('[ORDERS API] Stock reservation error:', stockError)
-            return apiError('Failed to reserve stock for order', 'STOCK_ERROR', 500)
+            console.error('[ORDERS API] Stock reservation error (continuing):', stockError)
           }
         }
-        
+
         // Update credit used when order is delivered
         if (body.status === 'delivered' && order.status !== 'delivered') {
-          const { error: creditError } = await supabase
+          const { data: storeRow } = await supabase
             .from('stores')
-            .update({
-              credit_used: supabase.raw(`credit_used + ${order.total_amount}`)
-            })
+            .select('credit_used')
             .eq('id', order.store_id)
-          
-          if (creditError) {
-            console.error('[ORDERS API] Credit update error:', creditError)
+            .single()
+          if (storeRow) {
+            const { error: creditError } = await supabase
+              .from('stores')
+              .update({ credit_used: parseFloat(storeRow.credit_used?.toString() || '0') + parseFloat(order.total_amount.toString()) })
+              .eq('id', order.store_id)
+            if (creditError) {
+              console.error('[ORDERS API] Credit update error:', creditError)
+            }
           }
         }
-        
+
         // Restore credit if order is cancelled after being delivered
         if (body.status === 'cancelled' && order.status === 'delivered') {
-          const { error: creditError } = await supabase
+          const { data: storeRow } = await supabase
             .from('stores')
-            .update({
-              credit_used: supabase.raw(`credit_used - ${order.total_amount}`)
-            })
+            .select('credit_used')
             .eq('id', order.store_id)
-          
-          if (creditError) {
-            console.error('[ORDERS API] Credit restore error:', creditError)
+            .single()
+          if (storeRow) {
+            const { error: creditError } = await supabase
+              .from('stores')
+              .update({ credit_used: Math.max(0, parseFloat(storeRow.credit_used?.toString() || '0') - parseFloat(order.total_amount.toString())) })
+              .eq('id', order.store_id)
+            if (creditError) {
+              console.error('[ORDERS API] Credit restore error:', creditError)
+            }
           }
         }
       }

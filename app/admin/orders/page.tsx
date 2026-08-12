@@ -1,8 +1,29 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Printer, AlertCircle } from "lucide-react"
-import { fetchOrders, apiClient } from "@/lib/api-client"
+import { Printer, AlertCircle, Check, Truck, PackageCheck, X } from "lucide-react"
+import { fetchOrders, apiClient, updateOrderStatus } from "@/lib/api-client"
+
+const NEXT_ACTIONS: Record<string, { label: string; status: string; icon: any; className: string }[]> = {
+  pending: [
+    { label: "Confirm", status: "confirmed", icon: Check, className: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+    { label: "Cancel", status: "cancelled", icon: X, className: "bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50" },
+  ],
+  processing: [
+    { label: "Confirm", status: "confirmed", icon: Check, className: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+    { label: "Cancel", status: "cancelled", icon: X, className: "bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50" },
+  ],
+  confirmed: [
+    { label: "Out for Delivery", status: "out_for_delivery", icon: Truck, className: "bg-primary text-primary-foreground hover:brightness-95" },
+    { label: "Cancel", status: "cancelled", icon: X, className: "bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50" },
+  ],
+  out_for_delivery: [
+    { label: "Mark Delivered", status: "delivered", icon: PackageCheck, className: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+    { label: "Cancel", status: "cancelled", icon: X, className: "bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50" },
+  ],
+  delivered: [],
+  cancelled: [],
+}
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -12,6 +33,7 @@ export default function OrdersPage() {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [orderDetails, setOrderDetails] = useState<any>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   useEffect(() => {
     loadOrders()
@@ -49,6 +71,23 @@ export default function OrdersPage() {
     } else {
       setExpandedOrder(orderId)
       loadOrderDetails(orderId)
+    }
+  }
+
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    const previous = [...orders]
+    try {
+      setUpdatingId(orderId)
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+      await updateOrderStatus(orderId, newStatus)
+      if (expandedOrder === orderId) {
+        loadOrderDetails(orderId)
+      }
+    } catch (err: any) {
+      setOrders(previous)
+      alert(`Failed to update order: ${err.message || 'Unknown error'}`)
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -141,39 +180,66 @@ export default function OrdersPage() {
               <th className="px-4 py-3 text-left text-sm font-bold">Items</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Total</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Status</th>
-              <th className="px-4 py-3 text-left text-sm font-bold">Action</th>
+              <th className="px-4 py-3 text-left text-sm font-bold">Quick Actions</th>
+              <th className="px-4 py-3 text-left text-sm font-bold"></th>
             </tr>
           </thead>
           <tbody>
             {orders.length > 0 ? (
-              orders.map((order) => (
-                <tr key={order.id} className="border-b border-border hover:bg-muted">
-                  <td className="px-4 py-3 text-sm font-medium text-primary">{order.order_number}</td>
-                  <td className="px-4 py-3 text-sm">{order.store_name || 'N/A'}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {new Date(order.order_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 text-sm">{order.total_items}</td>
-                  <td className="px-4 py-3 text-sm font-bold">${parseFloat(order.total_amount).toFixed(2)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`status-badge ${getStatusColor(order.status)}`}>
-                      {getStatusLabel(order.status)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleExpandOrder(order.id)}
-                      className="btn-ghost text-xs flex items-center gap-1"
-                    >
-                      <Printer size={14} />
-                      {expandedOrder === order.id ? "Hide" : "Details"}
-                    </button>
-                  </td>
-                </tr>
-              ))
+              orders.map((order) => {
+                const storeName = order.stores?.name || order.store_name || 'Unknown store'
+                const actions = NEXT_ACTIONS[order.status] || []
+                return (
+                  <tr key={order.id} className="border-b border-border hover:bg-muted">
+                    <td className="px-4 py-3 text-sm font-medium text-primary">{order.order_number}</td>
+                    <td className="px-4 py-3 text-sm font-medium">{storeName}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {new Date(order.order_date).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm">{order.total_items}</td>
+                    <td className="px-4 py-3 text-sm font-bold">${parseFloat(order.total_amount).toFixed(2)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`status-badge ${getStatusColor(order.status)}`}>
+                        {getStatusLabel(order.status)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        {actions.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">No actions</span>
+                        ) : (
+                          actions.map((action) => {
+                            const Icon = action.icon
+                            return (
+                              <button
+                                key={action.status}
+                                onClick={() => handleStatusChange(order.id, action.status)}
+                                disabled={updatingId === order.id}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${action.className}`}
+                              >
+                                <Icon size={13} />
+                                {updatingId === order.id ? "..." : action.label}
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleExpandOrder(order.id)}
+                        className="btn-ghost text-xs flex items-center gap-1"
+                      >
+                        <Printer size={14} />
+                        {expandedOrder === order.id ? "Hide" : "Details"}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })
             ) : (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   No orders found for the selected filter
                 </td>
               </tr>
@@ -204,7 +270,10 @@ export default function OrdersPage() {
                 <div className="grid grid-cols-2 gap-6 pb-4 border-b border-border">
                   <div>
                     <p className="text-xs font-bold text-secondary">STORE</p>
-                    <p className="font-bold">{orderDetails.store_name || 'N/A'}</p>
+                    <p className="font-bold">{orderDetails.stores?.name || orderDetails.store_name || 'N/A'}</p>
+                    {orderDetails.stores?.email && (
+                      <p className="text-xs text-muted-foreground">{orderDetails.stores.email}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs font-bold text-secondary">ORDER #</p>
@@ -251,10 +320,10 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                {orderDetails.notes && (
+                {orderDetails.customer_notes && (
                   <div className="pt-4 border-t border-border">
                     <p className="text-xs font-bold text-secondary mb-2">NOTES</p>
-                    <p className="text-sm text-foreground">{orderDetails.notes}</p>
+                    <p className="text-sm text-foreground">{orderDetails.customer_notes}</p>
                   </div>
                 )}
               </div>

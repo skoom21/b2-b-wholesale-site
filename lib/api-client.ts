@@ -189,6 +189,13 @@ export async function cancelOrder(id: string) {
   })
 }
 
+export async function updateOrderStatus(id: string, status: string) {
+  return apiClient(`/api/orders/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
+
 // Store API
 export async function fetchStore(id: string) {
   return apiClient(`/api/stores/${id}`)
