@@ -215,7 +215,7 @@ export default function InventoryPage() {
       case "in_stock": return "bg-green-100 text-green-800"
       case "low_stock": return "bg-yellow-100 text-yellow-800"
       case "out_of_stock": return "bg-red-100 text-red-800"
-      default: return "bg-gray-100 text-gray-800"
+      default: return "bg-muted text-foreground"
     }
   }
 
@@ -224,7 +224,7 @@ export default function InventoryPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-secondary">Inventory Manager</h1>
-          <p className="text-gray-600">Product catalog and stock management ({totalCount} items)</p>
+          <p className="text-muted-foreground">Product catalog and stock management ({totalCount} items)</p>
           {selectedProducts.length > 0 && (
             <p className="text-sm text-primary font-medium mt-1">{selectedProducts.length} product(s) selected</p>
           )}
@@ -247,10 +247,10 @@ export default function InventoryPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white p-4 border border-border rounded-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-card p-4 border border-border rounded-lg flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex flex-1 gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70" size={18} />
             <input
               type="text"
               placeholder="Search products..."
@@ -287,67 +287,67 @@ export default function InventoryPage() {
       {/* Products Table */}
       <div className="card overflow-x-auto p-0">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-border">
+          <thead className="bg-muted/50 border-b border-border">
             <tr>
               <th className="px-4 py-3 text-left">
                 <input
                   type="checkbox"
                   checked={products.length > 0 && selectedProducts.length === products.length}
                   onChange={toggleSelectAll}
-                  className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                  className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SKU</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Prices (Base/Gold/Silver)</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">SKU</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stock</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Prices (Base/Gold/Silver)</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-card divide-y divide-border">
             {loading ? (
               <tr><td colSpan={7} className="px-6 py-4 text-center">Loading...</td></tr>
             ) : products.length === 0 ? (
-              <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">No products found</td></tr>
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">No products found</td></tr>
             ) : (
               products.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={product.id} className="hover:bg-muted transition-colors">
                   <td className="px-4 py-4">
                     <input
                       type="checkbox"
                       checked={selectedProducts.includes(product.id)}
                       onChange={() => toggleProductSelection(product.id)}
-                      className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                      className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
                     />
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-sm flex items-center justify-center">
+                      <div className="flex-shrink-0 h-10 w-10 bg-muted rounded-lg flex items-center justify-center">
                         {product.image_url ? (
-                          <img src={product.image_url} alt="" className="h-10 w-10 object-cover rounded-sm" />
+                          <img src={product.image_url} alt="" className="h-10 w-10 object-cover rounded-lg" />
                         ) : (
-                          <span className="text-gray-400 text-xs">No Img</span>
+                          <span className="text-muted-foreground/70 text-xs">No Img</span>
                         )}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                        <div className="text-sm font-medium text-foreground">{product.name}</div>
                         {product.categories && (
-                          <div className="text-xs text-gray-500">{product.categories.name}</div>
+                          <div className="text-xs text-muted-foreground">{product.categories.name}</div>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground font-mono">
                     {product.sku}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{product.stock_quantity}</div>
-                    <div className="text-xs text-gray-500">Threshold: {product.low_stock_threshold}</div>
+                    <div className="text-sm font-medium text-foreground">{product.stock_quantity}</div>
+                    <div className="text-xs text-muted-foreground">Threshold: {product.low_stock_threshold}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="font-medium">${parseFloat(product.base_price).toFixed(2)}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       G: {product.gold_price ? `$${parseFloat(product.gold_price).toFixed(2)}` : '-'} / 
                       S: {product.silver_price ? `$${parseFloat(product.silver_price).toFixed(2)}` : '-'}
                     </div>
@@ -357,7 +357,7 @@ export default function InventoryPage() {
                       {product.stock_status?.replace(/_/g, " ")}
                     </span>
                     {!product.is_active && (
-                      <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
+                      <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-muted text-muted-foreground">
                         Inactive
                       </span>
                     )}
@@ -386,7 +386,7 @@ export default function InventoryPage() {
         </table>
         
         {/* Pagination */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div className="bg-card px-4 py-3 flex items-center justify-between border-t border-border sm:px-6">
           <div className="flex-1 flex justify-between sm:hidden">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -405,7 +405,7 @@ export default function InventoryPage() {
           </div>
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-foreground">
                 Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
               </p>
             </div>
@@ -414,14 +414,14 @@ export default function InventoryPage() {
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -434,16 +434,16 @@ export default function InventoryPage() {
       {/* Edit/Create Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+          <div className="bg-card rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b border-border">
               <h2 className="text-xl font-bold">{selectedProduct ? 'Edit Product' : 'Add New Product'}</h2>
-              <button onClick={() => setIsModalOpen(false)}><X size={24} className="text-gray-400 hover:text-gray-600" /></button>
+              <button onClick={() => setIsModalOpen(false)}><X size={24} className="text-muted-foreground/70 hover:text-foreground" /></button>
             </div>
             
             <form onSubmit={handleSave} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">SKU</label>
                   <input
                     type="text"
                     value={formData.sku}
@@ -453,7 +453,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Product Name *</label>
                   <input
                     type="text"
                     required
@@ -466,7 +466,7 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Category *</label>
                   <select
                     required
                     value={formData.category_id}
@@ -480,7 +480,7 @@ export default function InventoryPage() {
                   </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit *</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Unit *</label>
                     <select
                       required
                       value={formData.unit}
@@ -537,7 +537,7 @@ export default function InventoryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Description</label>
                 <textarea
                   rows={3}
                   value={formData.description}
@@ -548,7 +548,7 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Base Price ($) *</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Base Price ($) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -560,7 +560,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gold Price ($)</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Gold Price ($)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -572,7 +572,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Silver Price ($)</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Silver Price ($)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -587,7 +587,7 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Stock Quantity</label>
                   <input
                     type="number"
                     min="0"
@@ -597,7 +597,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Low Stock Threshold</label>
                   <input
                     type="number"
                     min="0"
@@ -609,7 +609,7 @@ export default function InventoryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Image URL</label>
                 <input
                   type="text"
                   value={formData.image_url}
@@ -627,7 +627,7 @@ export default function InventoryPage() {
                     onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
                     className="w-4 h-4 text-primary"
                   />
-                  <span className="text-sm text-gray-700">Active Product</span>
+                  <span className="text-sm text-foreground">Active Product</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -636,11 +636,11 @@ export default function InventoryPage() {
                     onChange={(e) => setFormData({...formData, is_featured: e.target.checked})}
                     className="w-4 h-4 text-primary"
                   />
-                  <span className="text-sm text-gray-700">Featured Product</span>
+                  <span className="text-sm text-foreground">Featured Product</span>
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -665,10 +665,10 @@ export default function InventoryPage() {
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Product</h3>
-            <p className="text-gray-500 mb-6">
-              Are you sure you want to delete <span className="font-semibold text-gray-800">{selectedProduct?.name}</span>? 
+          <div className="bg-card rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-foreground mb-2">Delete Product</h3>
+            <p className="text-muted-foreground mb-6">
+              Are you sure you want to delete <span className="font-semibold text-foreground">{selectedProduct?.name}</span>? 
               This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
@@ -694,10 +694,10 @@ export default function InventoryPage() {
       {/* Bulk Delete Confirmation Modal */}
       {isBulkDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Multiple Products</h3>
-            <p className="text-gray-500 mb-6">
-              Are you sure you want to delete <span className="font-semibold text-gray-800">{selectedProducts.length} product(s)</span>? 
+          <div className="bg-card rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-foreground mb-2">Delete Multiple Products</h3>
+            <p className="text-muted-foreground mb-6">
+              Are you sure you want to delete <span className="font-semibold text-foreground">{selectedProducts.length} product(s)</span>? 
               This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">

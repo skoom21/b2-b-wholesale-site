@@ -88,7 +88,7 @@ export default function OrdersPage() {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="mt-4 text-gray-600">Loading orders...</p>
+          <p className="mt-4 text-muted-foreground">Loading orders...</p>
         </div>
       </div>
     )
@@ -109,19 +109,19 @@ export default function OrdersPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-secondary">Order Fulfillment</h1>
-        <p className="text-gray-600">Central queue of all incoming orders</p>
+        <p className="text-muted-foreground">Central queue of all incoming orders</p>
       </div>
 
       {/* Filters */}
-      <div className="bg-white border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-lg p-4">
         <label className="block text-sm font-bold text-secondary mb-3">Filter by Status</label>
         <div className="flex flex-wrap gap-2">
           {statuses.map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-sm text-sm font-medium transition-all ${
-                statusFilter === status ? "bg-primary text-white" : "bg-gray-100 text-secondary hover:bg-gray-200"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                statusFilter === status ? "bg-primary text-primary-foreground" : "bg-muted text-secondary hover:bg-muted"
               }`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1).replace("_", " ")}
@@ -134,7 +134,7 @@ export default function OrdersPage() {
       <div className="card overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-secondary text-white">
+            <tr>
               <th className="px-4 py-3 text-left text-sm font-bold">Order #</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Store</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
@@ -147,10 +147,10 @@ export default function OrdersPage() {
           <tbody>
             {orders.length > 0 ? (
               orders.map((order) => (
-                <tr key={order.id} className="border-b border-border hover:bg-gray-50">
+                <tr key={order.id} className="border-b border-border hover:bg-muted">
                   <td className="px-4 py-3 text-sm font-medium text-primary">{order.order_number}</td>
                   <td className="px-4 py-3 text-sm">{order.store_name || 'N/A'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {new Date(order.order_date).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-sm">{order.total_items}</td>
@@ -173,7 +173,7 @@ export default function OrdersPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   No orders found for the selected filter
                 </td>
               </tr>
@@ -184,11 +184,11 @@ export default function OrdersPage() {
 
       {/* Expanded Order Details */}
       {expandedOrder && (
-        <div className="card bg-gray-50">
+        <div className="card bg-muted/50">
           {loadingDetails ? (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              <p className="mt-2 text-sm text-gray-600">Loading order details...</p>
+              <p className="mt-2 text-sm text-muted-foreground">Loading order details...</p>
             </div>
           ) : orderDetails ? (
             <>
@@ -227,19 +227,19 @@ export default function OrdersPage() {
                   <div className="space-y-2">
                     {orderDetails.items && orderDetails.items.length > 0 ? (
                       orderDetails.items.map((item: any) => (
-                        <div key={item.id} className="flex justify-between items-center text-sm pb-2 border-b border-gray-300">
+                        <div key={item.id} className="flex justify-between items-center text-sm pb-2 border-b border-border">
                           <div>
                             <p className="font-medium">{item.product_name}</p>
-                            <p className="text-xs text-gray-600">SKU: {item.product_sku}</p>
+                            <p className="text-xs text-muted-foreground">SKU: {item.product_sku}</p>
                           </div>
                           <div className="text-right">
                             <p>Qty: {item.quantity}</p>
-                            <p className="text-xs text-gray-600">${parseFloat(item.unit_price).toFixed(2)} each</p>
+                            <p className="text-xs text-muted-foreground">${parseFloat(item.unit_price).toFixed(2)} each</p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <p className="text-gray-500">No items found</p>
+                      <p className="text-muted-foreground">No items found</p>
                     )}
                   </div>
                 </div>
@@ -254,13 +254,13 @@ export default function OrdersPage() {
                 {orderDetails.notes && (
                   <div className="pt-4 border-t border-border">
                     <p className="text-xs font-bold text-secondary mb-2">NOTES</p>
-                    <p className="text-sm text-gray-700">{orderDetails.notes}</p>
+                    <p className="text-sm text-foreground">{orderDetails.notes}</p>
                   </div>
                 )}
               </div>
             </>
           ) : (
-            <p className="text-center text-gray-500 py-8">Failed to load order details</p>
+            <p className="text-center text-muted-foreground py-8">Failed to load order details</p>
           )}
         </div>
       )}

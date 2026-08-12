@@ -82,7 +82,7 @@ export default function CatalogPage() {
           <AlertCircle className="text-red-500" size={24} />
           <div>
             <p className="font-semibold text-secondary">Error Loading Catalog</p>
-            <p className="text-sm text-gray-600">{error}</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
           </div>
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function CatalogPage() {
         <div>
           <h1 className="text-3xl font-bold text-secondary">Product Catalog</h1>
           {store?.tier && (
-            <p className="text-gray-600 text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               {store.tier.charAt(0).toUpperCase() + store.tier.slice(1)} tier pricing applied
             </p>
           )}
@@ -161,7 +161,7 @@ export default function CatalogPage() {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white border border-border rounded-sm p-4 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
         <div>
           <label className="block text-sm font-bold text-secondary mb-2">Search Products</label>
           <input
@@ -178,8 +178,8 @@ export default function CatalogPage() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setFilter(null)}
-              className={`px-4 py-2 rounded-sm text-sm font-medium transition-all ${
-                filter === null ? "bg-primary text-white" : "bg-gray-100 text-secondary hover:bg-gray-200"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                filter === null ? "bg-primary text-primary-foreground" : "bg-muted text-secondary hover:bg-muted"
               }`}
             >
               All
@@ -188,8 +188,8 @@ export default function CatalogPage() {
               <button
                 key={cat.id}
                 onClick={() => setFilter(cat.id)}
-                className={`px-4 py-2 rounded-sm text-sm font-medium transition-all ${
-                  filter === cat.id ? "bg-primary text-white" : "bg-gray-100 text-secondary hover:bg-gray-200"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filter === cat.id ? "bg-primary text-primary-foreground" : "bg-muted text-secondary hover:bg-muted"
                 }`}
               >
                 {cat.name}
@@ -211,21 +211,21 @@ export default function CatalogPage() {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="font-bold text-secondary">{product.name}</h3>
-                    <p className="text-xs text-gray-500 mt-1">{product.sku}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{product.sku}</p>
                   </div>
                   <span className={`status-badge ${status.badge}`}>{status.label}</span>
                 </div>
-                <p className="text-xs text-gray-600">{product.unit}</p>
+                <p className="text-xs text-muted-foreground">{product.unit}</p>
                 {product.category_name && (
-                  <p className="text-xs text-gray-500 mt-1">{product.category_name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{product.category_name}</p>
                 )}
               </div>
 
               <div className="mb-4 pb-4 border-b border-border">
                 <p className="text-2xl font-bold text-primary">${product.effective_price.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">per {product.unit.toLowerCase()}</p>
+                <p className="text-xs text-muted-foreground mt-1">per {product.unit.toLowerCase()}</p>
                 {product.base_price !== product.effective_price && (
-                  <p className="text-xs text-gray-400 line-through">
+                  <p className="text-xs text-muted-foreground/70 line-through">
                     Base: ${product.base_price.toFixed(2)}
                   </p>
                 )}
@@ -275,8 +275,8 @@ export default function CatalogPage() {
 
       {filtered.length === 0 && (
         <div className="text-center py-12">
-          <AlertCircle className="mx-auto text-gray-400 mb-3" size={40} />
-          <p className="text-gray-600">
+          <AlertCircle className="mx-auto text-muted-foreground/70 mb-3" size={40} />
+          <p className="text-muted-foreground">
             {searchTerm || filter ? "No products found matching your criteria" : "No products available"}
           </p>
         </div>

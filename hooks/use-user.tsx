@@ -3,7 +3,7 @@
 import { createContext, useContext, ReactNode } from 'react'
 import { User } from '@supabase/supabase-js'
 import { useQuery, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '@/lib/supabase/client'
 
 interface Store {
   id: string
@@ -41,10 +41,7 @@ const queryClient = new QueryClient({
   },
 })
 
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createClient()
 
 function UserProviderInner({ children }: { children: ReactNode }) {
   // Fetch user

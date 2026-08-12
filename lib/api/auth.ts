@@ -1,8 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '../types'
+import { createMockSupabaseClient, hasSupabaseConfig } from '../supabase/client'
 
 export async function createServerSupabaseClient() {
+  if (!hasSupabaseConfig()) {
+    console.warn('[AUTH] Missing Supabase config; using local mock client')
+    return createMockSupabaseClient()
+  }
+
   const cookieStore = await cookies()
   const allCookies = cookieStore.getAll()
   

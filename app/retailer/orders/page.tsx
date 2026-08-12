@@ -79,7 +79,7 @@ export default function OrdersPage() {
           <AlertCircle className="text-red-500" size={24} />
           <div>
             <p className="font-semibold text-secondary">Error Loading Orders</p>
-            <p className="text-sm text-gray-600">{error}</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
           </div>
         </div>
       </div>
@@ -131,17 +131,17 @@ export default function OrdersPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-secondary">Order History</h1>
-        <p className="text-gray-600">Track and manage all your orders</p>
+        <p className="text-muted-foreground">Track and manage all your orders</p>
       </div>
 
       {/* Status Filter */}
-      <div className="bg-white border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-lg p-4">
         <label className="block text-sm font-bold text-secondary mb-3">Filter by Status</label>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setStatusFilter(null)}
-            className={`px-4 py-2 rounded-sm text-sm font-medium transition-all ${
-              statusFilter === null ? "bg-primary text-white" : "bg-gray-100 text-secondary hover:bg-gray-200"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              statusFilter === null ? "bg-primary text-primary-foreground" : "bg-muted text-secondary hover:bg-muted"
             }`}
           >
             All
@@ -150,8 +150,8 @@ export default function OrdersPage() {
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-sm text-sm font-medium transition-all ${
-                statusFilter === status ? "bg-primary text-white" : "bg-gray-100 text-secondary hover:bg-gray-200"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                statusFilter === status ? "bg-primary text-primary-foreground" : "bg-muted text-secondary hover:bg-muted"
               }`}
             >
               {getStatusLabel(status)}
@@ -162,8 +162,8 @@ export default function OrdersPage() {
 
       {orders.length === 0 ? (
         <div className="text-center py-12">
-          <Package className="mx-auto text-gray-400 mb-3" size={48} />
-          <p className="text-gray-600">
+          <Package className="mx-auto text-muted-foreground/70 mb-3" size={48} />
+          <p className="text-muted-foreground">
             {statusFilter ? `No ${getStatusLabel(statusFilter).toLowerCase()} orders found` : "No orders yet"}
           </p>
         </div>
@@ -186,7 +186,7 @@ export default function OrdersPage() {
                         {getStatusLabel(order.status)}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-gray-600">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-muted-foreground">
                       <div>
                         <p className="text-xs font-bold text-secondary">Date</p>
                         <p>{formatDate(order.order_date)}</p>
@@ -222,14 +222,14 @@ export default function OrdersPage() {
                           {details.items.map((item: any) => (
                             <div key={item.id} className="flex justify-between items-center text-sm">
                               <div>
-                                <span className="text-gray-700 font-medium">{item.product_name}</span>
-                                <p className="text-xs text-gray-500">SKU: {item.product_sku}</p>
+                                <span className="text-foreground font-medium">{item.product_name}</span>
+                                <p className="text-xs text-muted-foreground">SKU: {item.product_sku}</p>
                               </div>
                               <div className="text-right">
                                 <span className="font-medium">
                                   {item.quantity} × ${item.unit_price.toFixed(2)}
                                 </span>
-                                <p className="text-xs text-gray-500">${item.subtotal.toFixed(2)}</p>
+                                <p className="text-xs text-muted-foreground">${item.subtotal.toFixed(2)}</p>
                               </div>
                             </div>
                           ))}
@@ -237,11 +237,11 @@ export default function OrdersPage() {
 
                         <div className="mt-4 pt-4 border-t border-border">
                           <div className="flex justify-between text-sm mb-2">
-                            <span className="text-gray-600">Subtotal</span>
+                            <span className="text-muted-foreground">Subtotal</span>
                             <span className="font-medium">${details.subtotal.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm mb-2">
-                            <span className="text-gray-600">Tax</span>
+                            <span className="text-muted-foreground">Tax</span>
                             <span className="font-medium">${details.tax_amount.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between font-bold text-lg">
@@ -251,14 +251,14 @@ export default function OrdersPage() {
                         </div>
 
                         {details.notes && (
-                          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                          <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                             <p className="text-xs font-bold text-secondary mb-1">Notes</p>
-                            <p className="text-sm text-gray-600">{details.notes}</p>
+                            <p className="text-sm text-muted-foreground">{details.notes}</p>
                           </div>
                         )}
                       </>
                     ) : (
-                      <p className="text-center text-gray-500 py-4">Failed to load order details</p>
+                      <p className="text-center text-muted-foreground py-4">Failed to load order details</p>
                     )}
                   </div>
                 )}

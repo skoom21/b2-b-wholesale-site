@@ -60,9 +60,9 @@ export default function AdminLayout({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted/40 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     )
@@ -73,25 +73,25 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-border sticky top-0 z-40">
+    <div className="min-h-screen bg-muted/40">
+      <header className="bg-background/80 backdrop-blur-md border-b border-border sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center text-white font-bold text-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-sm">
                 T
               </div>
-              <span className="font-bold text-secondary text-lg">Admin</span>
+              <span className="font-semibold text-foreground text-base tracking-tight">Admin</span>
             </div>
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     pathname === item.href
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-gray-600 hover:text-secondary"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
                   {item.label}
@@ -102,7 +102,7 @@ export default function AdminLayout({ children }) {
 
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-2 text-sm">
-              <span className="text-gray-600">{user?.email}</span>
+              <span className="text-muted-foreground">{user?.email}</span>
             </div>
             <button onClick={handleLogout} className="btn-secondary flex items-center gap-2" title="Sign out">
               <LogOut size={16} />
@@ -116,13 +116,13 @@ export default function AdminLayout({ children }) {
         </div>
 
         {isMenuOpen && (
-          <div className="md:hidden border-t border-border bg-white">
-            <nav className="flex flex-col">
+          <div className="md:hidden border-t border-border bg-card">
+            <nav className="flex flex-col p-2">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="px-6 py-3 border-b border-border text-sm font-medium hover:bg-gray-50"
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}

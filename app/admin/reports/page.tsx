@@ -36,7 +36,7 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-secondary">Financial Reports</h1>
-          <p className="text-gray-600">Analytics and insights on sales performance</p>
+          <p className="text-muted-foreground">Analytics and insights on sales performance</p>
         </div>
         <button className="btn-primary inline-flex items-center gap-2">
           <Download size={18} />
@@ -47,19 +47,19 @@ export default function ReportsPage() {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
-          <p className="text-sm text-gray-600 font-medium">Monthly Revenue</p>
+          <p className="text-sm text-muted-foreground font-medium">Monthly Revenue</p>
           <p className="text-3xl font-bold text-primary mt-2">$165,500</p>
           <p className="text-xs text-green-600 mt-1">+12.5% from last month</p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-600 font-medium">Average Order Value</p>
+          <p className="text-sm text-muted-foreground font-medium">Average Order Value</p>
           <p className="text-3xl font-bold text-primary mt-2">$1,141</p>
           <p className="text-xs text-green-600 mt-1">+5.3% from last month</p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-600 font-medium">Best Selling Category</p>
+          <p className="text-sm text-muted-foreground font-medium">Best Selling Category</p>
           <p className="text-3xl font-bold text-primary mt-2">Naan</p>
-          <p className="text-xs text-gray-500 mt-1">100% inventory velocity</p>
+          <p className="text-xs text-muted-foreground mt-1">100% inventory velocity</p>
         </div>
       </div>
 
@@ -69,13 +69,13 @@ export default function ReportsPage() {
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={revenueData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
-            <XAxis dataKey="week" stroke="#2C3E50" />
-            <YAxis stroke="#2C3E50" />
+            <XAxis dataKey="week" stroke="#78716c" />
+            <YAxis stroke="#78716c" />
             <Tooltip />
             <Legend />
-            <Bar dataKey="restaurant" fill="#D35400" name="Restaurant" />
-            <Bar dataKey="grocery" fill="#2C3E50" name="Grocery" />
-            <Bar dataKey="distributor" fill="#27AE60" name="Distributor" />
+            <Bar dataKey="restaurant" fill="#0f766e" name="Restaurant" />
+            <Bar dataKey="grocery" fill="#6366f1" name="Grocery" />
+            <Bar dataKey="distributor" fill="#d97706" name="Distributor" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -86,7 +86,7 @@ export default function ReportsPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-secondary text-white">
+              <tr>
                 <th className="px-4 py-3 text-left text-sm font-bold">Product</th>
                 <th className="px-4 py-3 text-left text-sm font-bold">Velocity Score</th>
                 <th className="px-4 py-3 text-left text-sm font-bold">Movement</th>
@@ -94,10 +94,10 @@ export default function ReportsPage() {
             </thead>
             <tbody>
               {inventoryData.map((item, idx) => (
-                <tr key={idx} className="border-b border-border hover:bg-gray-50">
+                <tr key={idx} className="border-b border-border hover:bg-muted">
                   <td className="px-4 py-3 text-sm font-medium">{item.product}</td>
                   <td className="px-4 py-3 text-sm">
-                    <div className="w-24 bg-gray-300 rounded h-2">
+                    <div className="w-24 bg-muted-foreground/30 rounded h-2">
                       <div className="bg-primary rounded h-2" style={{ width: `${item.velocity}%` }} />
                     </div>
                   </td>
@@ -135,10 +135,10 @@ export default function ReportsPage() {
             ]}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
-            <XAxis dataKey="product" stroke="#2C3E50" />
-            <YAxis stroke="#2C3E50" />
+            <XAxis dataKey="product" stroke="#78716c" />
+            <YAxis stroke="#78716c" />
             <Tooltip />
-            <Line type="monotone" dataKey="orders" stroke="#D35400" strokeWidth={2} name="Order Count" />
+            <Line type="monotone" dataKey="orders" stroke="#0f766e" strokeWidth={2} name="Order Count" />
           </LineChart>
         </ResponsiveContainer>
       </div>

@@ -45,7 +45,7 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     )
@@ -66,7 +66,7 @@ export default function AdminDashboard() {
 
   const { stats, recent_orders, low_stock_products, pending_stores } = dashboardData
 
-  const COLORS = ["#D35400", "#2C3E50", "#27AE60", "#F39C12", "#E74C3C"]
+  const COLORS = ["#0f766e", "#6366f1", "#d97706", "#e11d48", "#0ea5e9"]
 
   const dashStats = [
     { 
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-secondary">Admin Dashboard</h1>
-        <p className="text-gray-600">Overview of platform operations and sales metrics</p>
+        <p className="text-muted-foreground">Overview of platform operations and sales metrics</p>
       </div>
 
       {/* Stats Grid */}
@@ -110,9 +110,9 @@ export default function AdminDashboard() {
             <div key={idx} className="card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
+                  <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
                   <p className="text-2xl font-bold text-secondary mt-2">{stat.value}</p>
-                  <p className="text-xs text-gray-500 mt-1">{stat.change}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
                 </div>
                 <Icon className="text-primary opacity-20" size={40} />
               </div>
@@ -133,11 +133,11 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Silver Tier</span>
-              <span className="text-lg font-bold text-gray-400">{stats.stores.tiers.silver}</span>
+              <span className="text-lg font-bold text-muted-foreground/70">{stats.stores.tiers.silver}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Standard Tier</span>
-              <span className="text-lg font-bold text-gray-600">{stats.stores.tiers.standard}</span>
+              <span className="text-lg font-bold text-muted-foreground">{stats.stores.tiers.standard}</span>
             </div>
           </div>
         </div>
@@ -168,7 +168,7 @@ export default function AdminDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-secondary text-white">
+              <tr>
                 <th className="px-4 py-3 text-left text-sm font-bold">Order #</th>
                 <th className="px-4 py-3 text-left text-sm font-bold">Store</th>
                 <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
@@ -179,10 +179,10 @@ export default function AdminDashboard() {
             <tbody>
               {recent_orders && recent_orders.length > 0 ? (
                 recent_orders.map((order: any) => (
-                  <tr key={order.id} className="border-b border-border hover:bg-gray-50">
+                  <tr key={order.id} className="border-b border-border hover:bg-muted">
                     <td className="px-4 py-3 text-sm font-medium text-primary">{order.order_number}</td>
                     <td className="px-4 py-3 text-sm">{order.stores?.name || 'N/A'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {new Date(order.order_date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-sm font-bold">${parseFloat(order.total_amount).toFixed(2)}</td>
@@ -199,7 +199,7 @@ export default function AdminDashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                     No recent orders
                   </td>
                 </tr>
@@ -216,7 +216,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-secondary text-white">
+                <tr>
                   <th className="px-4 py-3 text-left text-sm font-bold">SKU</th>
                   <th className="px-4 py-3 text-left text-sm font-bold">Product</th>
                   <th className="px-4 py-3 text-left text-sm font-bold">Stock</th>
@@ -226,11 +226,11 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {low_stock_products.slice(0, 10).map((product: any) => (
-                  <tr key={product.id} className="border-b border-border hover:bg-gray-50">
+                  <tr key={product.id} className="border-b border-border hover:bg-muted">
                     <td className="px-4 py-3 text-sm font-medium text-primary">{product.sku}</td>
                     <td className="px-4 py-3 text-sm">{product.name}</td>
                     <td className="px-4 py-3 text-sm font-bold text-red-600">{product.stock_quantity}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{product.low_stock_threshold}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{product.low_stock_threshold}</td>
                     <td className="px-4 py-3">
                       <span className={`status-badge ${
                         product.stock_status === 'out_of_stock' ? 'status-red' : 'status-yellow'
@@ -253,7 +253,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-secondary text-white">
+                <tr>
                   <th className="px-4 py-3 text-left text-sm font-bold">Store Name</th>
                   <th className="px-4 py-3 text-left text-sm font-bold">Email</th>
                   <th className="px-4 py-3 text-left text-sm font-bold">City</th>
@@ -263,12 +263,12 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {pending_stores.map((store: any) => (
-                  <tr key={store.id} className="border-b border-border hover:bg-gray-50">
+                  <tr key={store.id} className="border-b border-border hover:bg-muted">
                     <td className="px-4 py-3 text-sm font-medium">{store.name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{store.email}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{store.email}</td>
                     <td className="px-4 py-3 text-sm">{store.city}</td>
                     <td className="px-4 py-3 text-sm">{store.store_type}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {new Date(store.created_at).toLocaleDateString()}
                     </td>
                   </tr>

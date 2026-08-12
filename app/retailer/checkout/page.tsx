@@ -129,7 +129,7 @@ export default function CheckoutPage() {
       <div className="card max-w-md mx-auto text-center">
         <AlertCircle className="mx-auto text-red-500 mb-3" size={40} />
         <h2 className="text-xl font-bold text-secondary mb-2">No Store Found</h2>
-        <p className="text-gray-600">You need a store to place orders.</p>
+        <p className="text-muted-foreground">You need a store to place orders.</p>
       </div>
     )
   }
@@ -142,10 +142,10 @@ export default function CheckoutPage() {
             <Check className="text-green-600" size={32} />
           </div>
           <h1 className="text-2xl font-bold text-secondary mb-2">Order Placed Successfully!</h1>
-          <p className="text-gray-600 mb-6">
+          <p className="text-muted-foreground mb-6">
             Your order <span className="font-bold text-primary">#{orderNumber}</span> has been submitted for processing.
           </p>
-          <p className="text-sm text-gray-500">Redirecting to orders page...</p>
+          <p className="text-sm text-muted-foreground">Redirecting to orders page...</p>
         </div>
       </div>
     )
@@ -160,9 +160,9 @@ export default function CheckoutPage() {
         </Link>
 
         <div className="card max-w-md mx-auto text-center py-12">
-          <ShoppingCart className="mx-auto text-gray-400 mb-3" size={48} />
+          <ShoppingCart className="mx-auto text-muted-foreground/70 mb-3" size={48} />
           <h2 className="text-xl font-bold text-secondary mb-2">Your Cart is Empty</h2>
-          <p className="text-gray-600 mb-6">Add some products from the catalog to get started.</p>
+          <p className="text-muted-foreground mb-6">Add some products from the catalog to get started.</p>
           <Link href="/retailer/catalog" className="btn-primary">
             Browse Catalog
           </Link>
@@ -180,11 +180,11 @@ export default function CheckoutPage() {
 
       <div>
         <h1 className="text-3xl font-bold text-secondary">Checkout</h1>
-        <p className="text-gray-600 mt-1">Review and confirm your order</p>
+        <p className="text-muted-foreground mt-1">Review and confirm your order</p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 p-4 rounded-sm text-red-800">
+        <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-lg text-destructive">
           {error}
         </div>
       )}
@@ -200,8 +200,8 @@ export default function CheckoutPage() {
                 <div key={item.id} className="flex justify-between items-start pb-4 border-b border-border last:border-0">
                   <div className="flex-1">
                     <p className="font-bold text-secondary">{item.name}</p>
-                    <p className="text-xs text-gray-500">SKU: {item.sku}</p>
-                    <p className="text-sm text-gray-600 mt-1">${item.effective_price.toFixed(2)} per {item.unit}</p>
+                    <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
+                    <p className="text-sm text-muted-foreground mt-1">${item.effective_price.toFixed(2)} per {item.unit}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
@@ -258,17 +258,17 @@ export default function CheckoutPage() {
 
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Subtotal</span>
+                <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">${calculateSubtotal().toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Shipping</span>
+                <span className="text-muted-foreground">Shipping</span>
                 <span className="font-medium">
                   {calculateShipping() === 0 ? "FREE" : `$${calculateShipping().toFixed(2)}`}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Tax (13%)</span>
+                <span className="text-muted-foreground">Tax (13%)</span>
                 <span className="font-medium">${calculateTax().toFixed(2)}</span>
               </div>
               <div className="pt-3 border-t border-border flex justify-between">
@@ -278,28 +278,28 @@ export default function CheckoutPage() {
             </div>
 
             {calculateSubtotal() >= 1000 && (
-              <div className="mt-4 bg-green-50 border border-green-200 p-3 rounded-sm text-xs text-green-800">
+              <div className="mt-4 bg-green-50 border border-green-200 p-3 rounded-lg text-xs text-green-800">
                 <p className="font-bold">🎉 Free shipping applied!</p>
               </div>
             )}
 
             {store?.tier && (
-              <div className="mt-4 bg-blue-50 border border-blue-200 p-3 rounded-sm text-xs text-blue-800">
+              <div className="mt-4 bg-blue-50 border border-blue-200 p-3 rounded-lg text-xs text-blue-800">
                 <p className="font-bold mb-1">{store.tier.charAt(0).toUpperCase() + store.tier.slice(1)} Tier Pricing</p>
                 <p>Special pricing already applied to all items</p>
               </div>
             )}
 
             {store && (
-              <div className="mt-4 p-3 bg-gray-50 border border-border rounded-sm text-xs">
+              <div className="mt-4 p-3 bg-muted/50 border border-border rounded-lg text-xs">
                 <p className="font-bold text-secondary mb-2">Credit Status</p>
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Credit Limit</span>
+                    <span className="text-muted-foreground">Credit Limit</span>
                     <span>${store.credit_limit.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Available</span>
+                    <span className="text-muted-foreground">Available</span>
                     <span className="font-medium text-green-600">
                       ${(store.credit_limit - store.credit_used).toFixed(2)}
                     </span>

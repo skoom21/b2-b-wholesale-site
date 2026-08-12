@@ -91,28 +91,28 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-muted/40 py-12 px-4">
       <div className="w-full max-w-md">
-        <div className="card">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center text-white font-bold">
-              T
-            </div>
-            <h1 className="text-2xl font-bold text-secondary">Teetoz</h1>
+        <div className="flex items-center justify-center gap-2.5 mb-8">
+          <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold">
+            T
           </div>
+          <span className="text-xl font-semibold tracking-tight text-foreground">Teetoz</span>
+        </div>
 
-          <h2 className="text-2xl font-bold text-secondary mb-2">Register Your Store</h2>
-          <p className="text-sm text-gray-600 mb-6">Join verified retailers across Canada</p>
+        <div className="card">
+          <h2 className="text-2xl font-semibold text-foreground mb-1">Register your store</h2>
+          <p className="text-sm text-muted-foreground mb-6">Join verified retailers across Canada</p>
 
           {error && (
-            <div className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-sm mb-6 text-sm">
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg mb-6 text-sm">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Store Name *</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Store Name *</label>
               <input
                 type="text"
                 name="storeName"
@@ -125,7 +125,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Full Name *</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Full Name *</label>
               <input
                 type="text"
                 name="fullName"
@@ -138,7 +138,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Email Address *</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Email Address *</label>
               <input
                 type="email"
                 name="email"
@@ -151,7 +151,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Business Type *</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Business Type *</label>
               <select
                 name="businessType"
                 value={formData.businessType}
@@ -168,7 +168,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">City *</label>
+              <label className="block text-sm font-medium text-foreground mb-2">City *</label>
               <input
                 type="text"
                 name="city"
@@ -181,7 +181,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Address</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Address</label>
               <input
                 type="text"
                 name="address"
@@ -194,7 +194,7 @@ export default function RegisterPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold text-secondary mb-2">Province</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Province</label>
                 <input
                   type="text"
                   name="province"
@@ -205,7 +205,7 @@ export default function RegisterPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-secondary mb-2">Postal Code</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Postal Code</label>
                 <input
                   type="text"
                   name="postalCode"
@@ -218,7 +218,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Phone</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Phone</label>
               <input
                 type="tel"
                 name="phone"
@@ -230,7 +230,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Password *</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Password *</label>
               <input
                 type="password"
                 name="password"
@@ -241,11 +241,11 @@ export default function RegisterPage() {
                 required
                 minLength={6}
               />
-              <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
+              <p className="text-xs text-muted-foreground mt-1">At least 6 characters</p>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-secondary mb-2">Confirm Password *</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Confirm Password *</label>
               <input
                 type="password"
                 name="confirmPassword"
@@ -263,7 +263,7 @@ export default function RegisterPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Already registered?{" "}
               <Link href="/login" className="text-primary font-bold hover:underline">
                 Sign in here

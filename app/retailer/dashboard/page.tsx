@@ -42,7 +42,7 @@ export default function RetailerDashboard() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     )
@@ -50,7 +50,7 @@ export default function RetailerDashboard() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-300 text-red-800 px-6 py-4 rounded-sm">
+      <div className="bg-destructive/10 border border-destructive/20 text-destructive px-6 py-4 rounded-lg">
         <p className="font-medium">Error loading dashboard</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -136,7 +136,7 @@ export default function RetailerDashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-secondary mb-2">Welcome Back{store?.name ? `, ${store.name}` : ''}</h1>
-        <p className="text-gray-600">Manage your orders and track inventory</p>
+        <p className="text-muted-foreground">Manage your orders and track inventory</p>
         {store?.tier && (
           <p className="text-sm text-primary font-medium mt-1">
             {store.tier.charAt(0).toUpperCase() + store.tier.slice(1)} Tier Member
@@ -148,7 +148,7 @@ export default function RetailerDashboard() {
       <div className="card bg-gradient-to-br from-primary/5 to-primary/10">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-gray-600 font-medium">Credit Available</p>
+            <p className="text-sm text-muted-foreground font-medium">Credit Available</p>
             <p className="text-3xl font-bold text-secondary mt-1">
               ${store.credit_available.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
@@ -157,16 +157,16 @@ export default function RetailerDashboard() {
         </div>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Credit Used</span>
+            <span className="text-muted-foreground">Credit Used</span>
             <span className="font-medium">${store.credit_used.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-muted rounded-full h-2">
             <div 
               className={`${creditColor} h-2 rounded-full transition-all`}
               style={{ width: `${Math.min(creditPercentage, 100)}%` }}
             ></div>
           </div>
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>{creditPercentage.toFixed(1)}% used</span>
             <span>Limit: ${store.credit_limit.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
@@ -181,7 +181,7 @@ export default function RetailerDashboard() {
             <div key={idx} className="card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
+                  <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
                   <p className={`text-2xl font-bold mt-2 ${stat.color}`}>{stat.value}</p>
                 </div>
                 <Icon className={`${stat.color} opacity-20`} size={40} />
@@ -192,7 +192,7 @@ export default function RetailerDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white border border-border rounded-sm p-6">
+      <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-xl font-bold text-secondary mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link href="/retailer/catalog" className="btn-primary w-full text-center">
@@ -214,7 +214,7 @@ export default function RetailerDashboard() {
         </div>
 
         {dashboardData.recent_orders.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <Package className="mx-auto mb-2 opacity-50" size={48} />
             <p>No recent orders</p>
           </div>
@@ -222,7 +222,7 @@ export default function RetailerDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-secondary text-white">
+                <tr>
                   <th className="px-4 py-3 text-left text-sm font-bold">Order ID</th>
                   <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
                   <th className="px-4 py-3 text-left text-sm font-bold">Items</th>
@@ -232,10 +232,10 @@ export default function RetailerDashboard() {
               </thead>
               <tbody>
                 {dashboardData.recent_orders.map((order) => (
-                  <tr key={order.order_number} className="border-b border-border hover:bg-gray-50">
+                  <tr key={order.order_number} className="border-b border-border hover:bg-muted">
                     <td className="px-4 py-3 text-sm font-medium text-primary">#{order.order_number}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(order.order_date)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{order.total_items} items</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(order.order_date)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{order.total_items} items</td>
                     <td className="px-4 py-3 text-sm font-bold">${order.total_amount.toFixed(2)}</td>
                     <td className="px-4 py-3">
                       <span className={`status-badge ${getStatusColor(order.status)}`}>
@@ -259,10 +259,10 @@ export default function RetailerDashboard() {
           </div>
           <div className="space-y-3">
             {dashboardData.unpaid_invoices.map((invoice) => (
-              <div key={invoice.invoice_number} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={invoice.invoice_number} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
                   <p className="font-medium text-secondary">Invoice #{invoice.invoice_number}</p>
-                  <p className="text-sm text-gray-600">Due: {formatDate(invoice.due_date)}</p>
+                  <p className="text-sm text-muted-foreground">Due: {formatDate(invoice.due_date)}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-red-600">${invoice.amount_due.toFixed(2)}</p>
@@ -285,14 +285,14 @@ export default function RetailerDashboard() {
           </div>
           <div className="space-y-3">
             {dashboardData.low_stock_products.map((product) => (
-              <div key={product.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={product.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="flex-1">
                   <p className="font-medium text-secondary">{product.name}</p>
-                  <p className="text-sm text-gray-600">SKU: {product.sku}</p>
+                  <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-yellow-600">{product.stock_quantity} units</p>
-                  <p className="text-xs text-gray-500">Min: {product.low_stock_threshold}</p>
+                  <p className="text-xs text-muted-foreground">Min: {product.low_stock_threshold}</p>
                 </div>
               </div>
             ))}

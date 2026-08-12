@@ -4,80 +4,88 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Teetoz Color System */
-  --primary: #d35400;
-  --secondary: #2c3e50;
-  --background: #ffffff;
-  --foreground: #2c3e50;
-  --border: #e0e0e0;
-  --muted: #f5f5f5;
-  --muted-foreground: #6b7280;
-  --status-green: #27ae60;
-  --status-yellow: #f39c12;
-  --status-red: #e74c3c;
+  /* Teetoz Color System — Modern Minimal SaaS */
+  --primary: #0f766e;
+  --secondary: #1c1917;
+  --background: #fafaf9;
+  --foreground: #1c1917;
+  --border: #e7e5e4;
+  --muted: #f5f5f4;
+  --muted-foreground: #78716c;
+  --status-green: #16a34a;
+  --status-yellow: #d97706;
+  --status-red: #dc2626;
   --card: #ffffff;
-  --card-foreground: #2c3e50;
-  --input: #f9f9f9;
-  --ring: #d35400;
-  --radius: 4px;
+  --card-foreground: #1c1917;
+  --input: #ffffff;
+  --ring: #0f766e;
+  --radius: 12px;
   --popover: #ffffff;
-  --popover-foreground: #2c3e50;
+  --popover-foreground: #1c1917;
   --primary-foreground: #ffffff;
   --secondary-foreground: #ffffff;
-  --accent: #f5f5f5;
-  --accent-foreground: #2c3e50;
-  --destructive: #e74c3c;
+  --accent: #f5f5f4;
+  --accent-foreground: #1c1917;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --chart-1: #8884d8;
-  --chart-2: #82ca9d;
-  --chart-3: #ffc658;
-  --chart-4: #ff7c7c;
-  --chart-5: #8dd1e1;
+  --chart-1: #0f766e;
+  --chart-2: #6366f1;
+  --chart-3: #d97706;
+  --chart-4: #e11d48;
+  --chart-5: #0ea5e9;
   --sidebar: #ffffff;
-  --sidebar-foreground: #2c3e50;
-  --sidebar-primary: #d35400;
+  --sidebar-foreground: #1c1917;
+  --sidebar-primary: #0f766e;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f5f5f5;
-  --sidebar-accent-foreground: #2c3e50;
-  --sidebar-border: #e0e0e0;
-  --sidebar-ring: #d35400;
+  --sidebar-accent: #f5f5f4;
+  --sidebar-accent-foreground: #1c1917;
+  --sidebar-border: #e7e5e4;
+  --sidebar-ring: #0f766e;
+  --shadow-xs: 0 1px 2px 0 rgb(28 25 23 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(28 25 23 / 0.06), 0 1px 2px -1px rgb(28 25 23 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(28 25 23 / 0.08), 0 2px 4px -2px rgb(28 25 23 / 0.05);
+  --shadow-lg: 0 12px 24px -6px rgb(28 25 23 / 0.1), 0 4px 8px -4px rgb(28 25 23 / 0.06);
 }
 
 .dark {
-  --primary: #d35400;
-  --secondary: #2c3e50;
-  --background: #1a1a1a;
-  --foreground: #ffffff;
-  --border: #333333;
-  --muted: #2c3e50;
-  --muted-foreground: #b0b0b0;
-  --card: #262626;
-  --card-foreground: #ffffff;
-  --input: #333333;
-  --status-green: #27ae60;
-  --status-yellow: #f39c12;
-  --status-red: #e74c3c;
-  --popover: #262626;
-  --popover-foreground: #ffffff;
-  --primary-foreground: #ffffff;
-  --secondary-foreground: #ffffff;
-  --accent: #2c3e50;
-  --accent-foreground: #ffffff;
-  --destructive: #e74c3c;
-  --destructive-foreground: #ffffff;
-  --chart-1: #8884d8;
-  --chart-2: #82ca9d;
-  --chart-3: #ffc658;
-  --chart-4: #ff7c7c;
-  --chart-5: #8dd1e1;
-  --sidebar: #1a1a1a;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #d35400;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2c3e50;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #333333;
-  --sidebar-ring: #d35400;
+  --primary: #2dd4bf;
+  --secondary: #f4f4f5;
+  --background: #0a0a0b;
+  --foreground: #fafafa;
+  --border: #27272a;
+  --muted: #1c1c1f;
+  --muted-foreground: #a1a1aa;
+  --card: #141416;
+  --card-foreground: #fafafa;
+  --input: #1c1c1f;
+  --status-green: #4ade80;
+  --status-yellow: #fbbf24;
+  --status-red: #f87171;
+  --popover: #141416;
+  --popover-foreground: #fafafa;
+  --primary-foreground: #04211f;
+  --secondary-foreground: #0a0a0b;
+  --accent: #1c1c1f;
+  --accent-foreground: #fafafa;
+  --destructive: #f87171;
+  --destructive-foreground: #0a0a0b;
+  --chart-1: #2dd4bf;
+  --chart-2: #818cf8;
+  --chart-3: #fbbf24;
+  --chart-4: #fb7185;
+  --chart-5: #38bdf8;
+  --sidebar: #141416;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #2dd4bf;
+  --sidebar-primary-foreground: #04211f;
+  --sidebar-accent: #1c1c1f;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #2dd4bf;
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.6), 0 4px 8px -4px rgb(0 0 0 / 0.4);
 }
 
 @theme inline {
@@ -110,10 +118,10 @@
   --color-status-green: var(--status-green);
   --color-status-yellow: var(--status-yellow);
   --color-status-red: var(--status-red);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -130,22 +138,29 @@
     @apply outline-ring/50;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
   }
 
   /* Teetoz Design System Components */
 
   /* Card Component */
   .card {
-    @apply bg-white border border-border p-6 shadow-sm;
-    border-radius: var(--radius);
+    @apply bg-card border border-border p-6;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
   }
 
   /* Input Component */
   .input {
-    @apply w-full px-4 py-2 border border-border text-sm font-medium text-foreground bg-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all;
-    border-radius: var(--radius);
+    @apply w-full px-4 py-2.5 border border-border text-sm font-medium text-foreground bg-input placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all;
+    border-radius: var(--radius-md);
   }
 
   .input:disabled {
@@ -155,28 +170,30 @@
   /* Button classes using Tailwind v4 opacity modifier syntax (bg-primary/90) instead of invalid bg-opacity-90 */
   /* Button - Primary */
   .btn-primary {
-    @apply bg-primary text-white px-6 py-2 font-bold focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
-    border-radius: var(--radius);
+    @apply bg-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
   }
 
   .btn-primary:hover {
-    filter: brightness(0.9);
+    filter: brightness(0.94);
+    box-shadow: var(--shadow-sm);
   }
 
   /* Button - Secondary */
   .btn-secondary {
-    @apply bg-transparent border border-secondary text-secondary px-6 py-2 font-bold focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
-    border-radius: var(--radius);
+    @apply bg-card border border-border text-foreground px-6 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2 focus:ring-offset-background transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    border-radius: var(--radius-md);
   }
 
   .btn-secondary:hover {
-    @apply bg-muted;
+    @apply bg-muted border-primary/30;
   }
 
   /* Button - Ghost */
   .btn-ghost {
-    @apply bg-transparent text-secondary px-6 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
-    border-radius: var(--radius);
+    @apply bg-transparent text-foreground px-6 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    border-radius: var(--radius-md);
   }
 
   .btn-ghost:hover {
@@ -185,49 +202,60 @@
 
   /* Status Badge - Green (In Stock) */
   .status-green {
-    @apply bg-green-100 text-status-green font-bold text-xs px-3 py-1;
-    border-radius: var(--radius);
+    @apply bg-green-500/10 text-status-green font-semibold text-xs px-3 py-1;
+    border-radius: 999px;
   }
 
   /* Status Badge - Yellow (Low Stock) */
   .status-yellow {
-    @apply bg-yellow-100 text-yellow-800 font-bold text-xs px-3 py-1;
-    border-radius: var(--radius);
+    @apply bg-amber-500/10 text-status-yellow font-semibold text-xs px-3 py-1;
+    border-radius: 999px;
   }
 
   /* Status Badge - Red (Out of Stock) */
   .status-red {
-    @apply bg-red-100 text-red-800 font-bold text-xs px-3 py-1;
-    border-radius: var(--radius);
+    @apply bg-red-500/10 text-status-red font-semibold text-xs px-3 py-1;
+    border-radius: 999px;
+  }
+
+  /* Status Badge - Blue */
+  .status-blue {
+    @apply bg-sky-500/10 text-sky-600 font-semibold text-xs px-3 py-1;
+    border-radius: 999px;
   }
 
   /* Status Badge - Gray */
   .status-gray {
-    @apply bg-gray-100 text-gray-700 font-bold text-xs px-3 py-1;
-    border-radius: var(--radius);
+    @apply bg-muted text-muted-foreground font-semibold text-xs px-3 py-1;
+    border-radius: 999px;
   }
 
   /* Status Badge Container */
   .status-badge {
-    @apply inline-flex items-center gap-1 font-bold text-xs px-3 py-1;
-    border-radius: var(--radius);
+    @apply inline-flex items-center gap-1.5 font-semibold text-xs px-3 py-1;
+    border-radius: 999px;
+  }
+
+  .status-badge::before {
+    content: "";
+    @apply w-1.5 h-1.5 rounded-full bg-current;
   }
 
   /* Heading Styles */
   h1 {
-    @apply text-3xl font-bold text-secondary;
+    @apply text-3xl font-semibold text-foreground tracking-tight;
   }
 
   h2 {
-    @apply text-2xl font-bold text-secondary;
+    @apply text-2xl font-semibold text-foreground tracking-tight;
   }
 
   h3 {
-    @apply text-xl font-bold text-secondary;
+    @apply text-xl font-semibold text-foreground tracking-tight;
   }
 
   h4 {
-    @apply text-lg font-bold text-secondary;
+    @apply text-lg font-semibold text-foreground;
   }
 
   p {
@@ -240,23 +268,27 @@
   }
 
   thead {
-    @apply bg-secondary text-white;
+    @apply bg-muted/60 text-muted-foreground;
   }
 
   th {
-    @apply px-4 py-3 text-left text-sm font-bold;
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider;
   }
 
   td {
-    @apply px-4 py-3;
+    @apply px-4 py-3.5;
   }
 
   tbody tr {
-    @apply border-b border-border hover:bg-muted transition-colors;
+    @apply border-b border-border hover:bg-muted/50 transition-colors;
+  }
+
+  tbody tr:last-child {
+    @apply border-b-0;
   }
 
   /* Link Styles */
   a {
-    @apply text-primary hover:underline font-medium transition-colors;
+    @apply text-primary hover:underline underline-offset-4 font-medium transition-colors;
   }
 }

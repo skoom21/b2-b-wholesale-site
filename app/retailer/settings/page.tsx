@@ -82,11 +82,11 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-secondary">Account Settings</h1>
-        <p className="text-gray-600">Manage your store information</p>
+        <p className="text-muted-foreground">Manage your store information</p>
       </div>
 
       {saved && (
-        <div className="bg-green-50 border border-green-300 text-green-800 px-4 py-3 rounded-sm flex items-center gap-2">
+        <div className="bg-green-50 border border-green-300 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
           <CheckCircle size={18} />
           <p className="font-medium">Your settings have been saved successfully</p>
         </div>
@@ -98,7 +98,7 @@ export default function SettingsPage() {
             <AlertCircle className="text-red-500" size={24} />
             <div>
               <p className="font-semibold text-secondary">Error Saving Settings</p>
-              <p className="text-sm text-gray-600">{error}</p>
+              <p className="text-sm text-muted-foreground">{error}</p>
             </div>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function SettingsPage() {
               <p className="font-bold text-secondary">
                 {store.tier.charAt(0).toUpperCase() + store.tier.slice(1)} Tier
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 {store.tier === 'bronze' && '5% discount on all products'}
                 {store.tier === 'silver' && '10% discount on all products'}
                 {store.tier === 'gold' && '15% discount on all products'}
@@ -233,13 +233,13 @@ export default function SettingsPage() {
           <h2 className="text-xl font-bold text-secondary mb-4">Credit Information</h2>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Credit Limit</span>
+              <span className="text-muted-foreground">Credit Limit</span>
               <span className="font-semibold text-secondary">
                 ${store.credit_limit.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Credit Used</span>
+              <span className="text-muted-foreground">Credit Used</span>
               <span className="font-semibold text-red-600">
                 ${store.credit_used.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>

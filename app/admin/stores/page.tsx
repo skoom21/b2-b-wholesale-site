@@ -83,7 +83,7 @@ export default function StoresPage() {
       case "suspended":
         return "bg-rose-50 text-rose-700 border-rose-100"
       default:
-        return "bg-gray-50 text-gray-700 border-gray-100"
+        return "bg-muted/50 text-foreground border-border"
     }
   }
 
@@ -91,7 +91,7 @@ export default function StoresPage() {
     return (
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <p className="text-gray-500 font-medium animate-pulse">Loading stores...</p>
+        <p className="text-muted-foreground font-medium animate-pulse">Loading stores...</p>
       </div>
     )
   }
@@ -104,7 +104,7 @@ export default function StoresPage() {
         </div>
         <div className="text-center">
           <h2 className="text-xl font-bold text-secondary mb-2">Something went wrong</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <button 
             onClick={() => loadStores()}
             className="btn-primary"
@@ -121,20 +121,20 @@ export default function StoresPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-secondary tracking-tight">Store Management</h1>
-          <p className="text-gray-600 mt-1">Review retailer applications and manage existing store accounts</p>
+          <p className="text-muted-foreground mt-1">Review retailer applications and manage existing store accounts</p>
         </div>
         
         <div className="flex flex-col space-y-2">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Filter Status</label>
-          <div className="flex p-1 bg-gray-100 rounded-lg">
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Filter Status</label>
+          <div className="flex p-1 bg-muted rounded-lg">
             {["all", "pending", "active", "suspended"].map((status) => (
               <button
                 key={status}
                 onClick={() => setStoreFilter(status)}
                 className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 ${
                   storeFilter === status 
-                    ? "bg-white text-primary shadow-sm ring-1 ring-black/5" 
-                    : "text-gray-600 hover:text-secondary hover:bg-gray-200/50"
+                    ? "bg-card text-primary shadow-sm ring-1 ring-black/5" 
+                    : "text-muted-foreground hover:text-secondary hover:bg-muted/50"
                 }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -145,12 +145,12 @@ export default function StoresPage() {
       </div>
 
       {stores.length === 0 ? (
-        <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-12 text-center">
-          <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search className="text-gray-400" size={32} />
+        <div className="bg-card border-2 border-dashed border-border rounded-2xl p-12 text-center">
+          <div className="bg-muted/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Search className="text-muted-foreground/70" size={32} />
           </div>
           <h3 className="text-lg font-bold text-secondary mb-1">No stores found</h3>
-          <p className="text-gray-500">No stores match your current filter criteria.</p>
+          <p className="text-muted-foreground">No stores match your current filter criteria.</p>
           {storeFilter !== "all" && (
             <button 
               onClick={() => setStoreFilter("all")}
@@ -165,8 +165,8 @@ export default function StoresPage() {
           {stores.map((store) => (
             <div
               key={store.id}
-              className={`group bg-white border rounded-2xl transition-all duration-300 hover:shadow-xl hover:border-primary/30 overflow-hidden ${
-                selectedStore === store.id ? "ring-2 ring-primary border-transparent shadow-xl" : "border-gray-100 shadow-sm"
+              className={`group bg-card border rounded-2xl transition-all duration-300 hover:shadow-xl hover:border-primary/30 overflow-hidden ${
+                selectedStore === store.id ? "ring-2 ring-primary border-transparent shadow-xl" : "border-border shadow-sm"
               }`}
             >
               {/* Header */}
@@ -182,8 +182,8 @@ export default function StoresPage() {
                     <div>
                       <h3 className="text-xl font-bold text-secondary group-hover:text-primary transition-colors">{store.name}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm font-medium text-gray-500">{store.store_type?.replace('_', ' ')}</span>
-                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                        <span className="text-sm font-medium text-muted-foreground">{store.store_type?.replace('_', ' ')}</span>
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground/30"></span>
                         <span className="text-sm font-bold text-primary uppercase tracking-wider">{store.tier}</span>
                       </div>
                     </div>
@@ -196,20 +196,20 @@ export default function StoresPage() {
 
                 <div className="grid grid-cols-2 gap-6 mt-6">
                   <div className="flex items-center gap-3">
-                    <div className="bg-gray-50 p-2 rounded-lg text-gray-400">
+                    <div className="bg-muted/50 p-2 rounded-lg text-muted-foreground/70">
                       <MapPin size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</p>
+                      <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">Location</p>
                       <p className="text-sm font-semibold text-secondary">{store.city}, {store.country}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="bg-gray-50 p-2 rounded-lg text-gray-400">
+                    <div className="bg-muted/50 p-2 rounded-lg text-muted-foreground/70">
                       <TrendingUp size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Account Manager</p>
+                      <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">Account Manager</p>
                       <p className="text-sm font-semibold text-secondary">{store.account_manager || 'Unassigned'}</p>
                     </div>
                   </div>
@@ -222,20 +222,20 @@ export default function StoresPage() {
                   selectedStore === store.id ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
                 }`}
               >
-                <div className="px-6 pb-6 pt-2 border-t border-gray-50 space-y-6">
+                <div className="px-6 pb-6 pt-2 border-t border-border space-y-6">
                   {/* Contact Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                      <Mail className="text-gray-400" size={18} />
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                      <Mail className="text-muted-foreground/70" size={18} />
                       <div className="overflow-hidden">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</p>
+                        <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">Email Address</p>
                         <p className="text-sm font-medium text-secondary truncate">{store.email}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                      <Phone className="text-gray-400" size={18} />
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                      <Phone className="text-muted-foreground/70" size={18} />
                       <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone Number</p>
+                        <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">Phone Number</p>
                         <p className="text-sm font-medium text-secondary">{store.phone || 'N/A'}</p>
                       </div>
                     </div>
@@ -254,11 +254,11 @@ export default function StoresPage() {
                     </div>
                     
                     <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-gray-600">Used: <span className="font-bold text-secondary">${parseFloat(store.credit_used?.toString() || "0").toLocaleString()}</span></span>
-                      <span className="text-gray-600">Limit: <span className="font-bold text-secondary">${parseFloat(store.credit_limit?.toString() || "0").toLocaleString()}</span></span>
+                      <span className="text-muted-foreground">Used: <span className="font-bold text-secondary">${parseFloat(store.credit_used?.toString() || "0").toLocaleString()}</span></span>
+                      <span className="text-muted-foreground">Limit: <span className="font-bold text-secondary">${parseFloat(store.credit_limit?.toString() || "0").toLocaleString()}</span></span>
                     </div>
                     
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                    <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-1000 ${
                           ((store.credit_used || 0) / store.credit_limit) > 0.9 ? 'bg-rose-500' : 'bg-primary'
@@ -268,7 +268,7 @@ export default function StoresPage() {
                     </div>
                     
                     <div className="mt-4 pt-4 border-t border-secondary/5 flex justify-between items-center">
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-widest">Available Credit</span>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Available Credit</span>
                       <span className="text-lg font-black text-primary">
                         ${(parseFloat(store.credit_limit?.toString() || "0") - parseFloat(store.credit_used?.toString() || "0")).toLocaleString()}
                       </span>
@@ -295,7 +295,7 @@ export default function StoresPage() {
                           ) : 'Approve Store'}
                         </button>
                         <button 
-                          className="flex-1 bg-white border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-bold py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                          className="flex-1 bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-bold py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleStatusUpdate(store.id, 'inactive')
@@ -309,7 +309,7 @@ export default function StoresPage() {
 
                     {store.status === "active" && (
                       <button 
-                        className="flex-1 bg-white border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-bold py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                        className="flex-1 bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-bold py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleStatusUpdate(store.id, 'suspended')

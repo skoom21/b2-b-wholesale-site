@@ -1,8 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '../types'
+import { createMockSupabaseClient, hasSupabaseConfig } from './client'
 
 export async function createClient() {
+  if (!hasSupabaseConfig()) {
+    console.warn('[SUPABASE SERVER] Missing env vars; using local mock client')
+    return createMockSupabaseClient()
+  }
+
   const cookieStore = await cookies()
 
   return createServerClient<Database>(
