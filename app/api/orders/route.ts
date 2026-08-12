@@ -233,33 +233,57 @@ export async function POST(request: NextRequest) {
     }
     
     // Create order
-    const { data: order, error: orderError } = await supabase
+    const orderPayload: Record<string, any> = {
+      order_number: orderNumberResult,
+      store_id: store.id,
+      status: 'pending',
+      subtotal,
+      shipping_cost: shippingCost,
+      tax_amount: taxAmount,
+      discount_amount: discountAmount,
+      total_amount: totalAmount,
+      total_items: totalItems,
+      shipping_address_line1: shipping_address?.address_line1,
+      shipping_address_line2: shipping_address?.address_line2,
+      shipping_city: shipping_address?.city,
+      shipping_province: shipping_address?.province,
+      shipping_postal_code: shipping_address?.postal_code,
+      shipping_country: shipping_address?.country || 'Canada',
+      customer_notes,
+      created_by: user.id
+    }
+
+    let { data: order, error: orderError } = await supabase
       .from('orders')
-      .insert({
-        order_number: orderNumberResult,
-        store_id: store.id,
-        status: 'pending',
-        subtotal,
-        shipping_cost: shippingCost,
-        tax_amount: taxAmount,
-        discount_amount: discountAmount,
-        total_amount: totalAmount,
-        total_items: totalItems,
-        shipping_address_line1: shipping_address?.address_line1,
-        shipping_address_line2: shipping_address?.address_line2,
-        shipping_city: shipping_address?.city,
-        shipping_province: shipping_address?.province,
-        shipping_postal_code: shipping_address?.postal_code,
-        shipping_country: shipping_address?.country || 'Canada',
-        customer_notes,
-        created_by: user.id
-      })
+      .insert(orderPayload)
       .select()
       .single()
-    
+
+    // created_by is an optional audit field referencing public.users(id).
+    // If that row is out of sync with auth.users (a known issue in this
+    // project), a foreign-key violation here would otherwise block every
+    // order for that account. Retry once without it rather than fail the
+    // whole checkout over an audit field.
+    if (orderError && orderError.code === '23503' && orderError.message?.includes('created_by')) {
+      console.warn('[ORDERS API] created_by FK violation, retrying without it:', orderError)
+      const { created_by, ...payloadWithoutCreatedBy } = orderPayload
+      const retry = await supabase
+        .from('orders')
+        .insert(payloadWithoutCreatedBy)
+        .select()
+        .single()
+      order = retry.data
+      orderError = retry.error
+    }
+
     if (orderError || !order) {
       console.error('[ORDERS API] Error creating order:', orderError)
-      return apiError('Failed to create order', 'DATABASE_ERROR', 500, orderError)
+      return apiError(
+        orderError?.message ? `Failed to create order: ${orderError.message}` : 'Failed to create order',
+        'DATABASE_ERROR',
+        500,
+        orderError
+      )
     }
     
     // Create order items
