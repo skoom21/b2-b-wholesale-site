@@ -170,11 +170,28 @@ export async function PUT(
       .eq('id', id)
       .select()
       .single()
-    
+
     if (error) {
       throw error
     }
-    
+
+    // Audit trail for direct admin credit adjustments
+    if (isAdmin && updateData.credit_limit !== undefined) {
+      const previousLimit = parseFloat(existingStore.credit_limit?.toString() || '0')
+      const newLimit = parseFloat(updateData.credit_limit.toString())
+      if (newLimit !== previousLimit) {
+        await supabase.from('store_credit_history').insert({
+          store_id: id,
+          amount: newLimit - previousLimit,
+          balance_before: previousLimit,
+          balance_after: newLimit,
+          transaction_type: 'admin_adjustment',
+          notes: 'Credit limit adjusted directly by admin',
+          created_by: user!.id,
+        })
+      }
+    }
+
     return apiSuccess({ store })
     
   } catch (error: any) {

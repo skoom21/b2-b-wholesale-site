@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { TrendingUp, ShoppingCart, AlertCircle, CreditCard, DollarSign, Package } from "lucide-react"
-import { fetchDashboardData, ApiError } from "@/lib/api-client"
+import { TrendingUp, ShoppingCart, AlertCircle, CreditCard, DollarSign, Package, Clock } from "lucide-react"
+import { fetchDashboardData, fetchCreditRequests, submitCreditRequest, ApiError, type CreditRequest } from "@/lib/api-client"
 import { useUser } from "@/hooks/use-user"
 
 export default function RetailerDashboard() {
@@ -11,6 +11,13 @@ export default function RetailerDashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [pendingRequest, setPendingRequest] = useState<CreditRequest | null>(null)
+  const [showRequestForm, setShowRequestForm] = useState(false)
+  const [requestedAmount, setRequestedAmount] = useState("")
+  const [requestReason, setRequestReason] = useState("")
+  const [submittingRequest, setSubmittingRequest] = useState(false)
+  const [requestError, setRequestError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -34,8 +41,48 @@ export default function RetailerDashboard() {
       }
     }
 
+    const loadCreditRequests = async () => {
+      try {
+        const data = await fetchCreditRequests()
+        const pending = (data.requests || []).find(r => r.transaction_type === 'credit_request_pending')
+        setPendingRequest(pending || null)
+      } catch (err) {
+        console.error('[Dashboard] Failed to load credit requests:', err)
+      }
+    }
+
     loadDashboard()
+    loadCreditRequests()
   }, [])
+
+  const handleSubmitCreditRequest = async () => {
+    const amount = parseFloat(requestedAmount)
+    if (isNaN(amount) || amount <= 0) {
+      setRequestError("Enter a valid amount")
+      return
+    }
+    try {
+      setSubmittingRequest(true)
+      setRequestError(null)
+      await submitCreditRequest(amount, requestReason || undefined)
+      setPendingRequest({
+        id: 'optimistic',
+        amount: 0,
+        balance_before: dashboardData?.store?.credit_limit || 0,
+        balance_after: amount,
+        transaction_type: 'credit_request_pending',
+        notes: requestReason || null,
+        created_at: new Date().toISOString(),
+      })
+      setShowRequestForm(false)
+      setRequestedAmount("")
+      setRequestReason("")
+    } catch (err: any) {
+      setRequestError(err.message || "Failed to submit request")
+    } finally {
+      setSubmittingRequest(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -63,7 +110,7 @@ export default function RetailerDashboard() {
 
   const { store, stats, recent_orders, unpaid_invoices, low_stock_products } = dashboardData
 
-  const creditPercentage = (store.credit_used / store.credit_limit) * 100
+  const creditPercentage = store.credit_limit > 0 ? (store.credit_used / store.credit_limit) * 100 : 0
   const creditColor = creditPercentage > 90 ? 'bg-red-500' : creditPercentage > 75 ? 'bg-yellow-500' : 'bg-green-500'
 
   const statCards = [
@@ -170,6 +217,64 @@ export default function RetailerDashboard() {
             <span>{creditPercentage.toFixed(1)}% used</span>
             <span>Limit: ${store.credit_limit.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
+        </div>
+
+        {/* Request Credit Increase */}
+        <div className="mt-4 pt-4 border-t border-primary/10">
+          {pendingRequest ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock size={16} className="text-primary" />
+              Credit increase to ${pendingRequest.balance_after.toLocaleString()} is pending admin review.
+            </div>
+          ) : showRequestForm ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Requested Credit Limit ($)</label>
+                <input
+                  type="number"
+                  min={store.credit_limit + 1}
+                  step="0.01"
+                  value={requestedAmount}
+                  onChange={(e) => setRequestedAmount(e.target.value)}
+                  placeholder={`Higher than $${store.credit_limit.toLocaleString()}`}
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Reason (optional)</label>
+                <input
+                  type="text"
+                  value={requestReason}
+                  onChange={(e) => setRequestReason(e.target.value)}
+                  placeholder="e.g. Increasing order volume"
+                  className="input w-full"
+                />
+              </div>
+              {requestError && <p className="text-xs text-destructive">{requestError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSubmitCreditRequest}
+                  disabled={submittingRequest}
+                  className="btn-primary text-sm px-4 py-2 disabled:opacity-50"
+                >
+                  {submittingRequest ? "Submitting..." : "Submit Request"}
+                </button>
+                <button
+                  onClick={() => { setShowRequestForm(false); setRequestError(null) }}
+                  className="btn-ghost text-sm px-4 py-2"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowRequestForm(true)}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              Request Credit Increase
+            </button>
+          )}
         </div>
       </div>
 

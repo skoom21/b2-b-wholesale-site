@@ -203,10 +203,42 @@ export async function updateStore(id: string, data: {
   postal_code?: string
   website?: string
   status?: StoreStatus
+  credit_limit?: number
 }) {
   return apiClient(`/api/stores/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  })
+}
+
+// Credit Requests API
+export type CreditRequest = {
+  id: string
+  store_id?: string
+  amount: number
+  balance_before: number
+  balance_after: number
+  transaction_type: 'credit_request_pending' | 'credit_request_approved' | 'credit_request_rejected'
+  notes: string | null
+  created_at: string
+  stores?: { id: string; name: string; email: string; credit_limit: number }
+}
+
+export async function fetchCreditRequests() {
+  return apiClient<{ requests: CreditRequest[] }>('/api/credit-requests')
+}
+
+export async function submitCreditRequest(requested_limit: number, reason?: string) {
+  return apiClient('/api/credit-requests', {
+    method: 'POST',
+    body: JSON.stringify({ requested_limit, reason }),
+  })
+}
+
+export async function resolveCreditRequest(id: string, action: 'approve' | 'reject') {
+  return apiClient(`/api/credit-requests/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
   })
 }
 
@@ -319,6 +351,22 @@ export async function fetchStores(params?: {
     stores: data.data?.stores || data.data || [],
     pagination: data.meta || data.data?.pagination
   }
+}
+
+// Admin Reports API
+export async function fetchReports() {
+  return apiClient<{
+    monthly_revenue: { month: string; revenue: number }[]
+    revenue_by_type: Record<string, number>
+    top_sellers: { product_id: string; name: string; sku: string; quantity: number; revenue: number }[]
+    bottom_sellers: { product_id: string; name: string; sku: string; quantity: number; revenue: number }[]
+    no_sales_this_month: { id: string; name: string; sku: string }[]
+    this_month_revenue: number
+    last_month_revenue: number
+    revenue_change_pct: number | null
+    insights: string[]
+    current_month_label: string
+  }>('/api/reports')
 }
 
 // Admin Products API (for inventory management)

@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, X, Clock, AlertCircle, Search, Filter, Mail, Phone, MapPin, Building2, TrendingUp, CreditCard } from "lucide-react"
-import { fetchStores, updateStore as updateStoreAPI } from "@/lib/api-client"
+import { Check, X, Clock, AlertCircle, Search, Mail, Phone, MapPin, Building2, TrendingUp, CreditCard, Pencil, Inbox } from "lucide-react"
+import { fetchStores, updateStore as updateStoreAPI, fetchCreditRequests, resolveCreditRequest, type CreditRequest } from "@/lib/api-client"
 import type { Store, StoreStatus } from "@/lib/types"
 
 export default function StoresPage() {
@@ -13,9 +13,20 @@ export default function StoresPage() {
   const [storeFilter, setStoreFilter] = useState<string>("all")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
+  const [creditRequests, setCreditRequests] = useState<CreditRequest[]>([])
+  const [resolvingRequestId, setResolvingRequestId] = useState<string | null>(null)
+
+  const [editingCreditId, setEditingCreditId] = useState<string | null>(null)
+  const [creditDraft, setCreditDraft] = useState<string>("")
+  const [savingCreditId, setSavingCreditId] = useState<string | null>(null)
+
   useEffect(() => {
     loadStores()
   }, [storeFilter])
+
+  useEffect(() => {
+    loadCreditRequests()
+  }, [])
 
   const loadStores = async () => {
     try {
@@ -33,28 +44,81 @@ export default function StoresPage() {
     }
   }
 
+  const loadCreditRequests = async () => {
+    try {
+      const data = await fetchCreditRequests()
+      setCreditRequests((data.requests || []).filter(r => r.transaction_type === 'credit_request_pending'))
+    } catch (err) {
+      console.error('Failed to load credit requests:', err)
+    }
+  }
+
   const handleStatusUpdate = async (storeId: string, newStatus: StoreStatus) => {
     // Save previous state for rollback if needed
     const previousStores = [...stores]
-    
+
     try {
       setUpdatingId(storeId)
-      
+
       // Optimistic Update
-      setStores(prev => prev.map(store => 
+      setStores(prev => prev.map(store =>
         store.id === storeId ? { ...store, status: newStatus } : store
       ))
 
       await updateStoreAPI(storeId, { status: newStatus })
-      
+
       // Optional: Refresh from server to ensure data consistency
-      // await loadStores() 
+      // await loadStores()
     } catch (err: any) {
       // Rollback on error
       setStores(previousStores)
       alert(`Failed to update store status: ${err.message || 'Unknown error'}`)
     } finally {
       setUpdatingId(null)
+    }
+  }
+
+  const startEditingCredit = (store: Store) => {
+    setEditingCreditId(store.id)
+    setCreditDraft(store.credit_limit?.toString() || "0")
+  }
+
+  const cancelEditingCredit = () => {
+    setEditingCreditId(null)
+    setCreditDraft("")
+  }
+
+  const saveCreditLimit = async (storeId: string) => {
+    const newLimit = parseFloat(creditDraft)
+    if (isNaN(newLimit) || newLimit < 0) {
+      alert("Enter a valid credit limit")
+      return
+    }
+    try {
+      setSavingCreditId(storeId)
+      await updateStoreAPI(storeId, { credit_limit: newLimit })
+      setStores(prev => prev.map(s => s.id === storeId ? { ...s, credit_limit: newLimit } : s))
+      setEditingCreditId(null)
+    } catch (err: any) {
+      alert(`Failed to update credit limit: ${err.message || 'Unknown error'}`)
+    } finally {
+      setSavingCreditId(null)
+    }
+  }
+
+  const handleResolveRequest = async (requestId: string, action: 'approve' | 'reject') => {
+    try {
+      setResolvingRequestId(requestId)
+      await resolveCreditRequest(requestId, action)
+      const resolved = creditRequests.find(r => r.id === requestId)
+      setCreditRequests(prev => prev.filter(r => r.id !== requestId))
+      if (action === 'approve' && resolved?.store_id) {
+        setStores(prev => prev.map(s => s.id === resolved.store_id ? { ...s, credit_limit: resolved.balance_after } : s))
+      }
+    } catch (err: any) {
+      alert(`Failed to resolve request: ${err.message || 'Unknown error'}`)
+    } finally {
+      setResolvingRequestId(null)
     }
   }
 
@@ -105,7 +169,7 @@ export default function StoresPage() {
         <div className="text-center">
           <h2 className="text-xl font-bold text-secondary mb-2">Something went wrong</h2>
           <p className="text-muted-foreground mb-6">{error}</p>
-          <button 
+          <button
             onClick={() => loadStores()}
             className="btn-primary"
           >
@@ -123,7 +187,7 @@ export default function StoresPage() {
           <h1 className="text-3xl font-bold text-secondary tracking-tight">Store Management</h1>
           <p className="text-muted-foreground mt-1">Review retailer applications and manage existing store accounts</p>
         </div>
-        
+
         <div className="flex flex-col space-y-2">
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Filter Status</label>
           <div className="flex p-1 bg-muted rounded-lg">
@@ -132,8 +196,8 @@ export default function StoresPage() {
                 key={status}
                 onClick={() => setStoreFilter(status)}
                 className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 ${
-                  storeFilter === status 
-                    ? "bg-card text-primary shadow-sm ring-1 ring-black/5" 
+                  storeFilter === status
+                    ? "bg-card text-primary shadow-sm ring-1 ring-black/5"
                     : "text-muted-foreground hover:text-secondary hover:bg-muted/50"
                 }`}
               >
@@ -144,6 +208,46 @@ export default function StoresPage() {
         </div>
       </div>
 
+      {/* Pending Credit Requests */}
+      {creditRequests.length > 0 && (
+        <div className="card border-l-4 border-l-primary">
+          <div className="flex items-center gap-2 mb-4">
+            <Inbox className="text-primary" size={20} />
+            <h2 className="text-xl font-bold text-secondary">Pending Credit Requests</h2>
+            <span className="status-badge status-yellow">{creditRequests.length}</span>
+          </div>
+          <div className="space-y-3">
+            {creditRequests.map((req) => (
+              <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted/50 rounded-xl">
+                <div>
+                  <p className="font-semibold text-secondary">{req.stores?.name || 'Unknown store'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Requesting ${req.balance_after.toLocaleString()} (up from ${req.balance_before.toLocaleString()})
+                  </p>
+                  {req.notes && <p className="text-xs text-muted-foreground mt-1 italic">"{req.notes}"</p>}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => handleResolveRequest(req.id, 'approve')}
+                    disabled={resolvingRequestId === req.id}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-all disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleResolveRequest(req.id, 'reject')}
+                    disabled={resolvingRequestId === req.id}
+                    className="bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-bold px-4 py-2 rounded-lg text-sm transition-all disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {stores.length === 0 ? (
         <div className="bg-card border-2 border-dashed border-border rounded-2xl p-12 text-center">
           <div className="bg-muted/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -152,7 +256,7 @@ export default function StoresPage() {
           <h3 className="text-lg font-bold text-secondary mb-1">No stores found</h3>
           <p className="text-muted-foreground">No stores match your current filter criteria.</p>
           {storeFilter !== "all" && (
-            <button 
+            <button
               onClick={() => setStoreFilter("all")}
               className="mt-4 text-primary font-bold hover:underline"
             >
@@ -161,7 +265,7 @@ export default function StoresPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="flex flex-col gap-4">
           {stores.map((store) => (
             <div
               key={store.id}
@@ -170,7 +274,7 @@ export default function StoresPage() {
               }`}
             >
               {/* Header */}
-              <div 
+              <div
                 className="p-6 cursor-pointer"
                 onClick={() => setSelectedStore(selectedStore === store.id ? null : store.id)}
               >
@@ -217,7 +321,7 @@ export default function StoresPage() {
               </div>
 
               {/* Expandable Details */}
-              <div 
+              <div
                 className={`transition-all duration-500 ease-in-out overflow-hidden ${
                   selectedStore === store.id ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
                 }`}
@@ -249,29 +353,65 @@ export default function StoresPage() {
                         <h4 className="font-bold text-secondary">Credit Utilization</h4>
                       </div>
                       <span className="text-xs font-bold text-secondary/60">
-                        {Math.round(((store.credit_used || 0) / store.credit_limit) * 100)}% Used
+                        {store.credit_limit > 0 ? Math.round(((store.credit_used || 0) / store.credit_limit) * 100) : 0}% Used
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-muted-foreground">Used: <span className="font-bold text-secondary">${parseFloat(store.credit_used?.toString() || "0").toLocaleString()}</span></span>
                       <span className="text-muted-foreground">Limit: <span className="font-bold text-secondary">${parseFloat(store.credit_limit?.toString() || "0").toLocaleString()}</span></span>
                     </div>
-                    
+
                     <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-1000 ${
-                          ((store.credit_used || 0) / store.credit_limit) > 0.9 ? 'bg-rose-500' : 'bg-primary'
+                          store.credit_limit > 0 && ((store.credit_used || 0) / store.credit_limit) > 0.9 ? 'bg-rose-500' : 'bg-primary'
                         }`}
-                        style={{ width: `${Math.min(((store.credit_used || 0) / store.credit_limit) * 100, 100)}%` }}
+                        style={{ width: `${store.credit_limit > 0 ? Math.min(((store.credit_used || 0) / store.credit_limit) * 100, 100) : 0}%` }}
                       />
                     </div>
-                    
+
                     <div className="mt-4 pt-4 border-t border-secondary/5 flex justify-between items-center">
                       <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Available Credit</span>
                       <span className="text-lg font-black text-primary">
                         ${(parseFloat(store.credit_limit?.toString() || "0") - parseFloat(store.credit_used?.toString() || "0")).toLocaleString()}
                       </span>
+                    </div>
+
+                    {/* Inline credit limit editor */}
+                    <div className="mt-4 pt-4 border-t border-secondary/5" onClick={(e) => e.stopPropagation()}>
+                      {editingCreditId === store.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">$</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={creditDraft}
+                            onChange={(e) => setCreditDraft(e.target.value)}
+                            className="input flex-1"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => saveCreditLimit(store.id)}
+                            disabled={savingCreditId === store.id}
+                            className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
+                          >
+                            {savingCreditId === store.id ? 'Saving...' : 'Save'}
+                          </button>
+                          <button onClick={cancelEditingCredit} className="btn-ghost px-3 py-2 text-sm">
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startEditingCredit(store)}
+                          className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1.5"
+                        >
+                          <Pencil size={14} />
+                          Adjust Credit Limit
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -279,7 +419,7 @@ export default function StoresPage() {
                   <div className="flex gap-3 pt-2">
                     {store.status === "pending" && (
                       <>
-                        <button 
+                        <button
                           className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                           onClick={(e) => {
                             e.stopPropagation()
@@ -294,7 +434,7 @@ export default function StoresPage() {
                             </div>
                           ) : 'Approve Store'}
                         </button>
-                        <button 
+                        <button
                           className="flex-1 bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-bold py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                           onClick={(e) => {
                             e.stopPropagation()
@@ -308,7 +448,7 @@ export default function StoresPage() {
                     )}
 
                     {store.status === "active" && (
-                      <button 
+                      <button
                         className="flex-1 bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-bold py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -321,7 +461,7 @@ export default function StoresPage() {
                     )}
 
                     {store.status === "suspended" && (
-                      <button 
+                      <button
                         className="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -342,4 +482,3 @@ export default function StoresPage() {
     </div>
   )
 }
-
