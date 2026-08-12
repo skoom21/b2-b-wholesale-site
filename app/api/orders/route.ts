@@ -226,15 +226,21 @@ export async function POST(request: NextRequest) {
     // Generate order number
     const { data: orderNumberResult, error: orderNumberError } = await supabase
       .rpc('generate_order_number')
-    
+
     if (orderNumberError) {
       console.error('[ORDERS API] Error generating order number:', orderNumberError)
       return apiError('Failed to generate order number', 'DATABASE_ERROR', 500)
     }
-    
-    // Create order
-    const orderPayload: Record<string, any> = {
-      order_number: orderNumberResult,
+
+    // Create order. generate_order_number() derives the number from a plain
+    // COUNT(*) of today's orders, which is not race-safe — two requests
+    // landing close together can compute the same number and collide on
+    // the orders_order_number_key unique constraint. Retry with a bumped
+    // suffix on that specific collision instead of failing checkout.
+    let orderNumber: string = orderNumberResult
+    let order: any = null
+    let orderError: any = null
+    const baseOrderPayload: Record<string, any> = {
       store_id: store.id,
       status: 'pending',
       subtotal,
@@ -250,30 +256,44 @@ export async function POST(request: NextRequest) {
       shipping_postal_code: shipping_address?.postal_code,
       shipping_country: shipping_address?.country || 'Canada',
       customer_notes,
-      created_by: user.id
     }
+    let includeCreatedBy = true
 
-    let { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert(orderPayload)
-      .select()
-      .single()
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const payload: Record<string, any> = { ...baseOrderPayload, order_number: orderNumber }
+      if (includeCreatedBy) payload.created_by = user.id
 
-    // created_by is an optional audit field referencing public.users(id).
-    // If that row is out of sync with auth.users (a known issue in this
-    // project), a foreign-key violation here would otherwise block every
-    // order for that account. Retry once without it rather than fail the
-    // whole checkout over an audit field.
-    if (orderError && orderError.code === '23503' && orderError.message?.includes('created_by')) {
-      console.warn('[ORDERS API] created_by FK violation, retrying without it:', orderError)
-      const { created_by, ...payloadWithoutCreatedBy } = orderPayload
-      const retry = await supabase
-        .from('orders')
-        .insert(payloadWithoutCreatedBy)
-        .select()
-        .single()
-      order = retry.data
-      orderError = retry.error
+      const result = await supabase.from('orders').insert(payload).select().single()
+
+      if (!result.error) {
+        order = result.data
+        orderError = null
+        break
+      }
+
+      // created_by is an optional audit field referencing public.users(id).
+      // If that row is out of sync with auth.users (a known issue in this
+      // project), retry immediately without it rather than fail checkout
+      // over an audit field.
+      if (result.error.code === '23503' && result.error.message?.includes('created_by')) {
+        console.warn('[ORDERS API] created_by FK violation, retrying without it:', result.error)
+        includeCreatedBy = false
+        continue
+      }
+
+      // Unique violation on order_number: bump the numeric suffix and retry.
+      if (result.error.code === '23505' && result.error.message?.includes('order_number')) {
+        console.warn(`[ORDERS API] order_number collision on ${orderNumber}, retrying with next number`)
+        const match = orderNumber.match(/-(\d+)$/)
+        const nextSuffix = match
+          ? (parseInt(match[1], 10) + 1).toString().padStart(match[1].length, '0')
+          : Date.now().toString().slice(-4)
+        orderNumber = match ? orderNumber.replace(/-(\d+)$/, `-${nextSuffix}`) : `${orderNumber}-${nextSuffix}`
+        continue
+      }
+
+      orderError = result.error
+      break
     }
 
     if (orderError || !order) {
