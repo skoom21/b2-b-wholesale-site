@@ -132,9 +132,10 @@ export default function RetailerDashboard() {
       icon: AlertCircle,
       color: "text-orange-600"
     },
-    { 
-      label: "Unpaid Invoices", 
-      value: stats.unpaid_invoices, 
+    {
+      label: "Amount Due",
+      value: `$${(stats.unpaid_amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      subtext: `${stats.unpaid_invoices} unpaid invoice${stats.unpaid_invoices === 1 ? '' : 's'}`,
       icon: CreditCard,
       color: "text-red-600"
     },
@@ -288,6 +289,9 @@ export default function RetailerDashboard() {
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
                   <p className={`text-2xl font-bold mt-2 ${stat.color}`}>{stat.value}</p>
+                  {(stat as any).subtext && (
+                    <p className="text-xs text-muted-foreground mt-1">{(stat as any).subtext}</p>
+                  )}
                 </div>
                 <Icon className={`${stat.color} opacity-20`} size={40} />
               </div>

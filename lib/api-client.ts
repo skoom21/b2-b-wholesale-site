@@ -369,6 +369,18 @@ export async function fetchReports() {
   }>('/api/reports')
 }
 
+// Retailer Reports API
+export async function fetchRetailerReports() {
+  return apiClient<{
+    store_name: string
+    monthly_spend: { month: string; spend: number }[]
+    most_purchased: { product_id: string; name: string; sku: string; quantity: number; spend: number }[]
+    total_orders_6mo: number
+    total_spend_6mo: number
+    avg_order_value: number
+  }>('/api/reports/retailer')
+}
+
 // Admin Products API (for inventory management)
 export async function updateProduct(id: string, data: {
   name?: string

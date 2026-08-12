@@ -290,24 +290,6 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {store && (
-              <div className="mt-4 p-3 bg-muted/50 border border-border rounded-lg text-xs">
-                <p className="font-bold text-secondary mb-2">Credit Status</p>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Credit Limit</span>
-                    <span>${store.credit_limit.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Available</span>
-                    <span className="font-medium text-green-600">
-                      ${(store.credit_limit - store.credit_used).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <button
               onClick={handlePlaceOrder}
               disabled={isPlacingOrder || cart.length === 0}

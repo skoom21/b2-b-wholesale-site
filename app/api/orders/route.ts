@@ -219,15 +219,10 @@ export async function POST(request: NextRequest) {
     const totalAmount = subtotal + taxAmount + shippingCost - discountAmount
     const totalItems = validatedItems.reduce((sum, item) => sum + item.quantity, 0)
     
-    // Check credit limit
-    if (store.credit_used + totalAmount > store.credit_limit) {
-      return apiError(
-        `Order exceeds credit limit. Available credit: $${(store.credit_limit - store.credit_used).toFixed(2)}`,
-        'CREDIT_LIMIT_EXCEEDED',
-        403
-      )
-    }
-    
+    // Orders are post-paid (tracked as dues via invoices after the fact),
+    // not gated by a pre-set credit limit. credit_limit/credit_used remain
+    // available for admin reporting but no longer block checkout.
+
     // Generate order number
     const { data: orderNumberResult, error: orderNumberError } = await supabase
       .rpc('generate_order_number')
@@ -283,7 +278,29 @@ export async function POST(request: NextRequest) {
       await supabase.from('orders').delete().eq('id', order.id)
       return apiError('Failed to create order items', 'DATABASE_ERROR', 500, itemsError)
     }
-    
+
+    // Auto-generate an invoice so the retailer immediately sees this order
+    // as a due/balance owed (orders are post-paid, not blocked by credit limit).
+    // Best-effort: never fails order placement if this insert doesn't go through.
+    const dueDate = new Date()
+    dueDate.setDate(dueDate.getDate() + 30)
+    const { error: invoiceError } = await supabase
+      .from('invoices')
+      .insert({
+        order_id: order.id,
+        store_id: store.id,
+        status: 'sent',
+        subtotal,
+        tax_amount: taxAmount,
+        total_amount: totalAmount,
+        amount_paid: 0,
+        invoice_date: new Date().toISOString().slice(0, 10),
+        due_date: dueDate.toISOString().slice(0, 10),
+      })
+    if (invoiceError) {
+      console.error('[ORDERS API] Failed to auto-create invoice (order still succeeds):', invoiceError)
+    }
+
     // Fetch complete order with items
     const { data: completeOrder } = await supabase
       .from('orders')

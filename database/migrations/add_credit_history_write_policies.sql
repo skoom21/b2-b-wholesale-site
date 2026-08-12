@@ -24,3 +24,17 @@ CREATE POLICY "Admins can manage credit history" ON store_credit_history
     WITH CHECK (
         EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('admin', 'manager'))
     );
+
+-- invoices currently only has a SELECT policy too, so an order can't
+-- auto-generate its own invoice (the dues/balance shown to retailers).
+-- This lets a retailer's own order-placement create an invoice for
+-- their own store; admins can already manage invoices separately.
+CREATE POLICY "Retailers can create an invoice for their own order" ON invoices
+    FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM stores
+            WHERE stores.id = invoices.store_id
+            AND stores.user_id = auth.uid()
+        )
+    );

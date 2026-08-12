@@ -29,6 +29,7 @@ function RetailerLayoutContent({ children }) {
     { label: "Dashboard", href: "/retailer/dashboard" },
     { label: "Catalog", href: "/retailer/catalog" },
     { label: "Orders", href: "/retailer/orders" },
+    { label: "Analytics", href: "/retailer/analytics" },
     { label: "Settings", href: "/retailer/settings" },
   ]
 
