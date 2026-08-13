@@ -7,6 +7,14 @@
 --   3. inventory_transactions: written by a DB trigger whenever an order's
 --      status changes (confirm/ship/deliver), so without this every status
 --      change in admin Order Fulfillment fails.
+--   4. stores: retailers had SELECT on their own store but never UPDATE,
+--      so Settings -> Save Changes failed for every retailer with
+--      "Cannot coerce the result to a single JSON object" (RLS silently
+--      matches 0 rows rather than a clear permission error).
+--   5. activity_logs: a trigger (log_activity) fires on every insert/
+--      update/delete on orders, products, and stores and writes here.
+--      Only a SELECT policy exists; added defensively since it's the
+--      exact same gap as the other four and would surface the same way.
 
 CREATE POLICY "Retailers can request credit for their own store" ON store_credit_history
     FOR INSERT
@@ -52,3 +60,17 @@ CREATE POLICY "Admins can log inventory transactions" ON inventory_transactions
     WITH CHECK (
         EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('admin', 'manager'))
     );
+
+-- stores had SELECT for retailers on their own row but no UPDATE policy,
+-- so Settings -> Save Changes failed for every retailer.
+CREATE POLICY "Retailers can update their own store" ON stores
+    FOR UPDATE
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+-- activity_logs: see note above. Any authenticated write is fine here —
+-- it's an audit trail, so broad INSERT + admin-only SELECT is the right
+-- shape (matches the existing "Admins can view activity logs" policy).
+CREATE POLICY "Authenticated users can log activity" ON activity_logs
+    FOR INSERT
+    WITH CHECK (auth.uid() IS NOT NULL);

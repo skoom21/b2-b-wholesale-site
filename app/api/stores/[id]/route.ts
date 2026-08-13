@@ -25,14 +25,14 @@ export async function GET(
     if (user) {
       const { data: profile } = await supabase
         .from('users')
-        .select('role, store_id')
+        .select('role')
         .eq('id', user.id)
         .single()
-      
+
       const role = profile?.role || user.user_metadata?.role || 'retailer'
       const isAdmin = role === 'admin' || role === 'manager'
-      
-      if (!isAdmin && profile?.store_id !== id) {
+
+      if (!isAdmin && store.user_id !== user.id) {
         return apiForbidden('You can only access your own store')
       }
     }
@@ -69,38 +69,38 @@ export async function PUT(
     // Get user profile to check permissions
     const { data: profile } = await supabase
       .from('users')
-      .select('role, store_id')
+      .select('role')
       .eq('id', user!.id)
       .single()
-    
+
     const role = profile?.role || user!.user_metadata?.role || 'retailer'
     const isAdmin = role === 'admin' || role === 'manager'
-    const isOwnStore = profile?.store_id === id
-    
+    const isOwnStore = existingStore.user_id === user!.id
+
     // Only admin or store owner can update
     if (!isAdmin && !isOwnStore) {
       return apiForbidden('You do not have permission to update this store')
     }
-    
+
     // Prepare update data
     const updateData: any = {}
-    
+
     // Fields that both admin and retailer can update
-    const commonFields = ['name', 'phone', 'address_line1', 'address_line2', 'city', 'province', 'postal_code', 'country', 'website']
+    const commonFields = ['name', 'phone', 'address_line1', 'address_line2', 'city', 'province', 'postal_code', 'country']
     commonFields.forEach(field => {
       if (body[field] !== undefined) {
         updateData[field] = body[field]
       }
     })
-    
+
     // Support 'address' field as alias for 'address_line1' for backward compatibility
     if (body.address !== undefined && body.address_line1 === undefined) {
       updateData.address_line1 = body.address
     }
-    
+
     // Admin-only fields
     if (isAdmin) {
-      const adminFields = ['email', 'tier', 'status', 'store_type', 'credit_limit', 'payment_terms_days', 'tax_number']
+      const adminFields = ['email', 'tier', 'status', 'store_type', 'credit_limit', 'tax_number']
       adminFields.forEach(field => {
         if (body[field] !== undefined) {
           updateData[field] = body[field]
