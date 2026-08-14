@@ -15,7 +15,15 @@
 --      update/delete on orders, products, and stores and writes here.
 --      Only a SELECT policy exists; added defensively since it's the
 --      exact same gap as the other four and would surface the same way.
+--
+-- Every statement below drops the policy first if it already exists, so
+-- this whole file is safe to run again in full even if some of these
+-- were already applied in an earlier partial run — re-running previously
+-- did NOT work, because CREATE POLICY on a name that already exists
+-- errors out and stops the rest of the script before it reaches the
+-- newer policies further down.
 
+DROP POLICY IF EXISTS "Retailers can request credit for their own store" ON store_credit_history;
 CREATE POLICY "Retailers can request credit for their own store" ON store_credit_history
     FOR INSERT
     WITH CHECK (
@@ -26,6 +34,7 @@ CREATE POLICY "Retailers can request credit for their own store" ON store_credit
         )
     );
 
+DROP POLICY IF EXISTS "Admins can manage credit history" ON store_credit_history;
 CREATE POLICY "Admins can manage credit history" ON store_credit_history
     FOR ALL
     USING (
@@ -39,6 +48,7 @@ CREATE POLICY "Admins can manage credit history" ON store_credit_history
 -- auto-generate its own invoice (the dues/balance shown to retailers).
 -- This lets a retailer's own order-placement create an invoice for
 -- their own store; admins can already manage invoices separately.
+DROP POLICY IF EXISTS "Retailers can create an invoice for their own order" ON invoices;
 CREATE POLICY "Retailers can create an invoice for their own order" ON invoices
     FOR INSERT
     WITH CHECK (
@@ -55,6 +65,7 @@ CREATE POLICY "Retailers can create an invoice for their own order" ON invoices
 -- an order, so without this, every status change in Order Fulfillment
 -- fails with "new row violates row-level security policy for table
 -- inventory_transactions".
+DROP POLICY IF EXISTS "Admins can log inventory transactions" ON inventory_transactions;
 CREATE POLICY "Admins can log inventory transactions" ON inventory_transactions
     FOR INSERT
     WITH CHECK (
@@ -63,6 +74,7 @@ CREATE POLICY "Admins can log inventory transactions" ON inventory_transactions
 
 -- stores had SELECT for retailers on their own row but no UPDATE policy,
 -- so Settings -> Save Changes failed for every retailer.
+DROP POLICY IF EXISTS "Retailers can update their own store" ON stores;
 CREATE POLICY "Retailers can update their own store" ON stores
     FOR UPDATE
     USING (user_id = auth.uid())
@@ -71,6 +83,7 @@ CREATE POLICY "Retailers can update their own store" ON stores
 -- activity_logs: see note above. Any authenticated write is fine here —
 -- it's an audit trail, so broad INSERT + admin-only SELECT is the right
 -- shape (matches the existing "Admins can view activity logs" policy).
+DROP POLICY IF EXISTS "Authenticated users can log activity" ON activity_logs;
 CREATE POLICY "Authenticated users can log activity" ON activity_logs
     FOR INSERT
     WITH CHECK (auth.uid() IS NOT NULL);
