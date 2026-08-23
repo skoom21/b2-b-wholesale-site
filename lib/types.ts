@@ -65,7 +65,12 @@ export interface Store {
   // Credit management
   credit_limit: number; // decimal(12, 2)
   credit_used: number; // decimal(12, 2)
-  
+
+  // Payment model
+  payment_model?: 'credit' | 'per_order' | 'subscription';
+  billing_frequency?: 'weekly' | 'biweekly' | 'monthly' | null;
+  next_billing_date?: string | null;
+
   // Business information
   business_number?: string | null;
   tax_number?: string | null;

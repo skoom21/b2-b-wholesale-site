@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, X, Clock, AlertCircle, Search, Mail, Phone, MapPin, Building2, TrendingUp, CreditCard, Pencil, Inbox } from "lucide-react"
-import { fetchStores, updateStore as updateStoreAPI, fetchCreditRequests, resolveCreditRequest, type CreditRequest } from "@/lib/api-client"
+import { Check, X, Clock, AlertCircle, Search, Mail, Phone, MapPin, Building2, TrendingUp, CreditCard, Inbox, Plus, Trash2, ShoppingBag, Repeat } from "lucide-react"
+import { fetchStores, updateStore as updateStoreAPI, fetchCreditRequests, resolveCreditRequest, recordStorePayment, createManualOrder, fetchProducts, fetchPaymentModelRequests, resolvePaymentModelRequest, type CreditRequest, type PaymentModelRequest } from "@/lib/api-client"
 import type { Store, StoreStatus } from "@/lib/types"
 
 export default function StoresPage() {
@@ -16,16 +16,35 @@ export default function StoresPage() {
   const [creditRequests, setCreditRequests] = useState<CreditRequest[]>([])
   const [resolvingRequestId, setResolvingRequestId] = useState<string | null>(null)
 
-  const [editingCreditId, setEditingCreditId] = useState<string | null>(null)
-  const [creditDraft, setCreditDraft] = useState<string>("")
-  const [savingCreditId, setSavingCreditId] = useState<string | null>(null)
+  const [paymentFormId, setPaymentFormId] = useState<string | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState<string>("")
+  const [paymentNotes, setPaymentNotes] = useState<string>("")
+  const [submittingPaymentId, setSubmittingPaymentId] = useState<string | null>(null)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
+  const [products, setProducts] = useState<any[]>([])
+  const [walkInFormId, setWalkInFormId] = useState<string | null>(null)
+  const [walkInItems, setWalkInItems] = useState<{ product_id: string; quantity: string }[]>([{ product_id: "", quantity: "1" }])
+  const [submittingWalkInId, setSubmittingWalkInId] = useState<string | null>(null)
+  const [walkInError, setWalkInError] = useState<string | null>(null)
+
+  const [modelRequests, setModelRequests] = useState<PaymentModelRequest[]>([])
+  const [resolvingModelRequestId, setResolvingModelRequestId] = useState<string | null>(null)
+  const [editingModelId, setEditingModelId] = useState<string | null>(null)
+  const [modelDraft, setModelDraft] = useState<{ payment_model: string; billing_frequency: string }>({ payment_model: "credit", billing_frequency: "weekly" })
+  const [savingModelId, setSavingModelId] = useState<string | null>(null)
 
   useEffect(() => {
     loadStores()
   }, [storeFilter])
 
   useEffect(() => {
+    loadModelRequests()
+  }, [])
+
+  useEffect(() => {
     loadCreditRequests()
+    fetchProducts({ limit: 200 }).then((data: any) => setProducts(data.products || [])).catch(() => {})
   }, [])
 
   const loadStores = async () => {
@@ -50,6 +69,59 @@ export default function StoresPage() {
       setCreditRequests((data.requests || []).filter(r => r.transaction_type === 'credit_request_pending'))
     } catch (err) {
       console.error('Failed to load credit requests:', err)
+    }
+  }
+
+  const loadModelRequests = async () => {
+    try {
+      const data = await fetchPaymentModelRequests()
+      setModelRequests((data.requests || []).filter(r => r.status === 'pending'))
+    } catch (err) {
+      console.error('Failed to load payment model requests:', err)
+    }
+  }
+
+  const handleResolveModelRequest = async (requestId: string, action: 'approve' | 'reject') => {
+    try {
+      setResolvingModelRequestId(requestId)
+      await resolvePaymentModelRequest(requestId, action)
+      const resolved = modelRequests.find(r => r.id === requestId)
+      setModelRequests(prev => prev.filter(r => r.id !== requestId))
+      if (action === 'approve' && resolved?.store_id) {
+        setStores(prev => prev.map(s => s.id === resolved.store_id
+          ? { ...s, payment_model: resolved.requested_model, billing_frequency: resolved.requested_billing_frequency } as any
+          : s))
+      }
+    } catch (err: any) {
+      alert(`Failed to resolve request: ${err.message || 'Unknown error'}`)
+    } finally {
+      setResolvingModelRequestId(null)
+    }
+  }
+
+  const startEditingModel = (store: any) => {
+    setEditingModelId(store.id)
+    setModelDraft({ payment_model: store.payment_model || "credit", billing_frequency: store.billing_frequency || "weekly" })
+  }
+
+  const cancelEditingModel = () => {
+    setEditingModelId(null)
+  }
+
+  const savePaymentModel = async (storeId: string) => {
+    try {
+      setSavingModelId(storeId)
+      const payload: any = { payment_model: modelDraft.payment_model }
+      if (modelDraft.payment_model === 'subscription') {
+        payload.billing_frequency = modelDraft.billing_frequency
+      }
+      await updateStoreAPI(storeId, payload)
+      setStores(prev => prev.map(s => s.id === storeId ? { ...s, ...payload } as any : s))
+      setEditingModelId(null)
+    } catch (err: any) {
+      alert(`Failed to update payment model: ${err.message || 'Unknown error'}`)
+    } finally {
+      setSavingModelId(null)
     }
   }
 
@@ -78,31 +150,80 @@ export default function StoresPage() {
     }
   }
 
-  const startEditingCredit = (store: Store) => {
-    setEditingCreditId(store.id)
-    setCreditDraft(store.credit_limit?.toString() || "0")
+  const startPaymentForm = (storeId: string) => {
+    setPaymentFormId(storeId)
+    setPaymentAmount("")
+    setPaymentNotes("")
+    setPaymentError(null)
   }
 
-  const cancelEditingCredit = () => {
-    setEditingCreditId(null)
-    setCreditDraft("")
+  const cancelPaymentForm = () => {
+    setPaymentFormId(null)
+    setPaymentError(null)
   }
 
-  const saveCreditLimit = async (storeId: string) => {
-    const newLimit = parseFloat(creditDraft)
-    if (isNaN(newLimit) || newLimit < 0) {
-      alert("Enter a valid credit limit")
+  const handleRecordPayment = async (storeId: string) => {
+    const amount = parseFloat(paymentAmount)
+    if (!amount || amount <= 0) {
+      setPaymentError("Enter a valid amount")
       return
     }
     try {
-      setSavingCreditId(storeId)
-      await updateStoreAPI(storeId, { credit_limit: newLimit })
-      setStores(prev => prev.map(s => s.id === storeId ? { ...s, credit_limit: newLimit } : s))
-      setEditingCreditId(null)
+      setSubmittingPaymentId(storeId)
+      setPaymentError(null)
+      const result = await recordStorePayment(storeId, { amount, notes: paymentNotes || undefined })
+      setStores(prev => prev.map(s => s.id === storeId ? { ...s, credit_used: result.credit_used } : s))
+      setPaymentFormId(null)
     } catch (err: any) {
-      alert(`Failed to update credit limit: ${err.message || 'Unknown error'}`)
+      setPaymentError(err.message || "Failed to record payment")
     } finally {
-      setSavingCreditId(null)
+      setSubmittingPaymentId(null)
+    }
+  }
+
+  const startWalkInForm = (storeId: string) => {
+    setWalkInFormId(storeId)
+    setWalkInItems([{ product_id: "", quantity: "1" }])
+    setWalkInError(null)
+  }
+
+  const cancelWalkInForm = () => {
+    setWalkInFormId(null)
+    setWalkInError(null)
+  }
+
+  const updateWalkInItem = (index: number, field: "product_id" | "quantity", value: string) => {
+    setWalkInItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
+  }
+
+  const addWalkInRow = () => {
+    setWalkInItems(prev => [...prev, { product_id: "", quantity: "1" }])
+  }
+
+  const removeWalkInRow = (index: number) => {
+    setWalkInItems(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleCreateWalkInOrder = async (storeId: string) => {
+    const items = walkInItems
+      .filter(i => i.product_id && parseInt(i.quantity) > 0)
+      .map(i => ({ product_id: i.product_id, quantity: parseInt(i.quantity) }))
+
+    if (items.length === 0) {
+      setWalkInError("Add at least one product")
+      return
+    }
+
+    try {
+      setSubmittingWalkInId(storeId)
+      setWalkInError(null)
+      await createManualOrder(storeId, { items })
+      setWalkInFormId(null)
+      await loadStores()
+    } catch (err: any) {
+      setWalkInError(err.message || "Failed to log order")
+    } finally {
+      setSubmittingWalkInId(null)
     }
   }
 
@@ -248,6 +369,48 @@ export default function StoresPage() {
         </div>
       )}
 
+      {/* Pending Payment Model Requests */}
+      {modelRequests.length > 0 && (
+        <div className="card border-l-4 border-l-primary">
+          <div className="flex items-center gap-2 mb-4">
+            <Repeat className="text-primary" size={20} />
+            <h2 className="text-xl font-bold text-secondary">Pending Payment Model Requests</h2>
+            <span className="status-badge status-yellow">{modelRequests.length}</span>
+          </div>
+          <div className="space-y-3">
+            {modelRequests.map((req) => (
+              <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted/50 rounded-xl">
+                <div>
+                  <p className="font-semibold text-secondary">{req.stores?.name || 'Unknown store'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Wants to switch from <span className="font-medium">{req.current_model.replace('_', ' ')}</span> to{' '}
+                    <span className="font-medium">{req.requested_model.replace('_', ' ')}</span>
+                    {req.requested_billing_frequency && ` (${req.requested_billing_frequency})`}
+                  </p>
+                  {req.reason && <p className="text-xs text-muted-foreground mt-1 italic">"{req.reason}"</p>}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => handleResolveModelRequest(req.id, 'approve')}
+                    disabled={resolvingModelRequestId === req.id}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-all disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleResolveModelRequest(req.id, 'reject')}
+                    disabled={resolvingModelRequestId === req.id}
+                    className="bg-card border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-bold px-4 py-2 rounded-lg text-sm transition-all disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {stores.length === 0 ? (
         <div className="bg-card border-2 border-dashed border-border rounded-2xl p-12 text-center">
           <div className="bg-muted/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -345,74 +508,192 @@ export default function StoresPage() {
                     </div>
                   </div>
 
-                  {/* Credit Management */}
-                  <div className="bg-secondary/5 border border-secondary/10 p-5 rounded-2xl">
+                  {/* Payment Model */}
+                  <div className="bg-secondary/5 border border-secondary/10 p-5 rounded-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Repeat className="text-secondary/60" size={18} />
+                      <h4 className="font-bold text-secondary">Payment Model</h4>
+                    </div>
+
+                    {editingModelId === store.id ? (
+                      <div className="space-y-2">
+                        <select
+                          value={modelDraft.payment_model}
+                          onChange={(e) => setModelDraft({ ...modelDraft, payment_model: e.target.value })}
+                          className="input w-full"
+                        >
+                          <option value="credit">Credit (net terms)</option>
+                          <option value="per_order">Per Order (pay up front)</option>
+                          <option value="subscription">Subscription (consolidated billing)</option>
+                        </select>
+                        {modelDraft.payment_model === 'subscription' && (
+                          <select
+                            value={modelDraft.billing_frequency}
+                            onChange={(e) => setModelDraft({ ...modelDraft, billing_frequency: e.target.value })}
+                            className="input w-full"
+                          >
+                            <option value="weekly">Weekly</option>
+                            <option value="biweekly">Biweekly</option>
+                            <option value="monthly">Monthly</option>
+                          </select>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => savePaymentModel(store.id)}
+                            disabled={savingModelId === store.id}
+                            className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
+                          >
+                            {savingModelId === store.id ? 'Saving...' : 'Save'}
+                          </button>
+                          <button onClick={cancelEditingModel} className="btn-ghost px-3 py-2 text-sm">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-secondary capitalize">
+                            {((store as any).payment_model || 'credit').replace('_', ' ')}
+                            {(store as any).billing_frequency && ` — ${(store as any).billing_frequency}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {(store as any).payment_model === 'per_order'
+                              ? 'Pays for each order up front'
+                              : (store as any).payment_model === 'subscription'
+                              ? 'Dues consolidated and billed on a schedule'
+                              : 'Dues accumulate, paid down anytime (net terms)'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => startEditingModel(store)}
+                          className="text-sm font-semibold text-primary hover:underline shrink-0"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dues / Amount Owed */}
+                  <div className="bg-secondary/5 border border-secondary/10 p-5 rounded-2xl" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <CreditCard className="text-secondary/60" size={18} />
-                        <h4 className="font-bold text-secondary">Credit Utilization</h4>
+                        <h4 className="font-bold text-secondary">Amount Owed</h4>
                       </div>
-                      <span className="text-xs font-bold text-secondary/60">
-                        {store.credit_limit > 0 ? Math.round(((store.credit_used || 0) / store.credit_limit) * 100) : 0}% Used
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-muted-foreground">Used: <span className="font-bold text-secondary">${parseFloat(store.credit_used?.toString() || "0").toLocaleString()}</span></span>
-                      <span className="text-muted-foreground">Limit: <span className="font-bold text-secondary">${parseFloat(store.credit_limit?.toString() || "0").toLocaleString()}</span></span>
-                    </div>
-
-                    <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-1000 ${
-                          store.credit_limit > 0 && ((store.credit_used || 0) / store.credit_limit) > 0.9 ? 'bg-rose-500' : 'bg-primary'
-                        }`}
-                        style={{ width: `${store.credit_limit > 0 ? Math.min(((store.credit_used || 0) / store.credit_limit) * 100, 100) : 0}%` }}
-                      />
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t border-secondary/5 flex justify-between items-center">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Available Credit</span>
                       <span className="text-lg font-black text-primary">
-                        ${(parseFloat(store.credit_limit?.toString() || "0") - parseFloat(store.credit_used?.toString() || "0")).toLocaleString()}
+                        ${parseFloat(store.credit_used?.toString() || "0").toLocaleString()}
                       </span>
                     </div>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Builds up automatically as orders are confirmed. Record a payment whenever they pay you back — in-store cash, e-transfer, however they actually pay.
+                    </p>
 
-                    {/* Inline credit limit editor */}
-                    <div className="mt-4 pt-4 border-t border-secondary/5" onClick={(e) => e.stopPropagation()}>
-                      {editingCreditId === store.id ? (
+                    {paymentFormId === store.id ? (
+                      <div className="space-y-2">
+                        {paymentError && <p className="text-xs text-destructive">{paymentError}</p>}
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">$</span>
                           <input
                             type="number"
                             min={0}
                             step="0.01"
-                            value={creditDraft}
-                            onChange={(e) => setCreditDraft(e.target.value)}
+                            placeholder="Amount paid"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
                             className="input flex-1"
                             autoFocus
                           />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Note (optional) — e.g. cash, e-transfer"
+                          value={paymentNotes}
+                          onChange={(e) => setPaymentNotes(e.target.value)}
+                          className="input w-full"
+                        />
+                        <div className="flex gap-2">
                           <button
-                            onClick={() => saveCreditLimit(store.id)}
-                            disabled={savingCreditId === store.id}
+                            onClick={() => handleRecordPayment(store.id)}
+                            disabled={submittingPaymentId === store.id}
                             className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
                           >
-                            {savingCreditId === store.id ? 'Saving...' : 'Save'}
+                            {submittingPaymentId === store.id ? 'Saving...' : 'Save Payment'}
                           </button>
-                          <button onClick={cancelEditingCredit} className="btn-ghost px-3 py-2 text-sm">
-                            Cancel
-                          </button>
+                          <button onClick={cancelPaymentForm} className="btn-ghost px-3 py-2 text-sm">Cancel</button>
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => startEditingCredit(store)}
-                          className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1.5"
-                        >
-                          <Pencil size={14} />
-                          Adjust Credit Limit
-                        </button>
-                      )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startPaymentForm(store.id)}
+                        className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1.5"
+                      >
+                        <Plus size={14} />
+                        Record Payment
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Walk-in / in-store order */}
+                  <div className="bg-secondary/5 border border-secondary/10 p-5 rounded-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="text-secondary/60" size={18} />
+                        <h4 className="font-bold text-secondary">Walk-in Order</h4>
+                      </div>
                     </div>
+
+                    {walkInFormId === store.id ? (
+                      <div className="space-y-3">
+                        {walkInError && <p className="text-xs text-destructive">{walkInError}</p>}
+                        {walkInItems.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <select
+                              value={item.product_id}
+                              onChange={(e) => updateWalkInItem(idx, "product_id", e.target.value)}
+                              className="input flex-1"
+                            >
+                              <option value="">Select product</option>
+                              {products.map((p: any) => (
+                                <option key={p.id} value={p.id}>{p.name} — ${p.base_price}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="number"
+                              min={1}
+                              value={item.quantity}
+                              onChange={(e) => updateWalkInItem(idx, "quantity", e.target.value)}
+                              className="input w-20"
+                            />
+                            {walkInItems.length > 1 && (
+                              <button onClick={() => removeWalkInRow(idx)} className="text-muted-foreground hover:text-destructive">
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button onClick={addWalkInRow} className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1">
+                          <Plus size={12} /> Add another product
+                        </button>
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => handleCreateWalkInOrder(store.id)}
+                            disabled={submittingWalkInId === store.id}
+                            className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
+                          >
+                            {submittingWalkInId === store.id ? 'Logging...' : 'Log Order'}
+                          </button>
+                          <button onClick={cancelWalkInForm} className="btn-ghost px-3 py-2 text-sm">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startWalkInForm(store.id)}
+                        className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1.5"
+                      >
+                        <Plus size={14} />
+                        Log an order they placed in person
+                      </button>
+                    )}
                   </div>
 
                   {/* Actions */}

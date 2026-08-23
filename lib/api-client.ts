@@ -182,6 +182,19 @@ export async function createOrder(data: {
   })
 }
 
+// Admin/staff logging a walk-in order for a store that ordered in
+// person, not through the retailer's own checkout.
+export async function createManualOrder(storeId: string, data: {
+  items: Array<{ product_id: string; quantity: number }>
+  shipping_cost?: number
+  customer_notes?: string
+}) {
+  return apiClient('/api/orders', {
+    method: 'POST',
+    body: JSON.stringify({ ...data, store_id: storeId }),
+  })
+}
+
 export async function cancelOrder(id: string) {
   return apiClient(`/api/orders/${id}`, {
     method: 'PATCH',
@@ -211,11 +224,62 @@ export async function updateStore(id: string, data: {
   website?: string
   status?: StoreStatus
   credit_limit?: number
+  payment_model?: 'credit' | 'per_order' | 'subscription'
+  billing_frequency?: 'weekly' | 'biweekly' | 'monthly'
 }) {
   return apiClient(`/api/stores/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
+}
+
+// Payment Model Requests API
+export type PaymentModelRequest = {
+  id: string
+  store_id?: string
+  current_model: 'credit' | 'per_order' | 'subscription'
+  requested_model: 'credit' | 'per_order' | 'subscription'
+  requested_billing_frequency: 'weekly' | 'biweekly' | 'monthly' | null
+  status: 'pending' | 'approved' | 'rejected'
+  reason: string | null
+  created_at: string
+  stores?: { id: string; name: string; email: string; payment_model: string }
+}
+
+export async function fetchPaymentModelRequests() {
+  return apiClient<{ requests: PaymentModelRequest[] }>('/api/payment-model-requests')
+}
+
+export async function submitPaymentModelRequest(data: {
+  requested_model: 'credit' | 'per_order' | 'subscription'
+  requested_billing_frequency?: 'weekly' | 'biweekly' | 'monthly'
+  reason?: string
+}) {
+  return apiClient('/api/payment-model-requests', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function resolvePaymentModelRequest(id: string, action: 'approve' | 'reject') {
+  return apiClient(`/api/payment-model-requests/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
+  })
+}
+
+// Store dues payments — records a payment (in-store cash, or a retailer
+// self-reporting an in-system payment) against a store's owed balance.
+// Applies immediately; there's no real payment processor behind this.
+export async function recordStorePayment(storeId: string, data: { amount: number; notes?: string }) {
+  return apiClient<{ credit_used: number; entry: any }>(`/api/stores/${storeId}/payments`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function fetchStorePayments(storeId: string) {
+  return apiClient<{ payments: any[] }>(`/api/stores/${storeId}/payments`)
 }
 
 // Credit Requests API

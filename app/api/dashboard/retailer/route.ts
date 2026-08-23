@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     // Get user's store
     const { data: store, error: storeError } = await supabase
       .from('stores')
-      .select('id, name, tier, status, credit_limit, credit_used')
+      .select('id, name, tier, status, credit_limit, credit_used, payment_model, billing_frequency, next_billing_date')
       .eq('user_id', user.id)
       .single()
     
@@ -96,7 +96,10 @@ export async function GET(request: NextRequest) {
         status: store.status,
         credit_limit: store.credit_limit,
         credit_used: store.credit_used,
-        credit_available: parseFloat(store.credit_limit.toString()) - parseFloat(store.credit_used.toString())
+        credit_available: parseFloat(store.credit_limit.toString()) - parseFloat(store.credit_used.toString()),
+        payment_model: store.payment_model || 'credit',
+        billing_frequency: store.billing_frequency,
+        next_billing_date: store.next_billing_date
       },
       stats: {
         total_orders: totalOrders,

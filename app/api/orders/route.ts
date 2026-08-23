@@ -125,18 +125,25 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('Order must contain at least one item')
     }
 
-    // Get user's store
-    const { data: store, error: storeError } = await supabase
+    // Admin/staff can log an order on behalf of any store in their brand
+    // (a walk-in / in-store sale that never went through the retailer's
+    // own checkout) by passing store_id explicitly. Retailers always get
+    // their own store resolved from their session — they can't order on
+    // behalf of another store.
+    const isAdminCreated = (profile.role === 'admin' || profile.role === 'staff') && !!body.store_id
+    const storeQuery = supabase
       .from('stores')
       .select('id, tier, status, credit_limit, credit_used')
-      .eq('user_id', profile.id)
       .eq('brand_id', profile.brand_id)
-      .single()
-    
+
+    const { data: store, error: storeError } = isAdminCreated
+      ? await storeQuery.eq('id', body.store_id).single()
+      : await storeQuery.eq('user_id', profile.id).single()
+
     if (storeError || !store) {
-      return apiError('Store not found for user', 'STORE_NOT_FOUND', 404)
+      return apiError(isAdminCreated ? 'Store not found' : 'Store not found for user', 'STORE_NOT_FOUND', 404)
     }
-    
+
     if (store.status !== 'active') {
       return apiError('Store is not active', 'STORE_INACTIVE', 403)
     }
@@ -316,6 +323,23 @@ export async function POST(request: NextRequest) {
       // Rollback: delete the order
       await supabase.from('orders').delete().eq('id', order.id)
       return apiError('Failed to create order items', 'DATABASE_ERROR', 500, itemsError)
+    }
+
+    // Walk-in/in-store orders logged by admin already happened — confirm
+    // immediately instead of sitting in the pending queue. This has to be
+    // a separate UPDATE (not set on the initial INSERT above) because the
+    // store-credit trigger only fires on "AFTER UPDATE OF status", not on
+    // insert.
+    if (isAdminCreated) {
+      const { error: confirmError } = await supabase
+        .from('orders')
+        .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+        .eq('id', order.id)
+      if (confirmError) {
+        console.error('[ORDERS API] Failed to auto-confirm walk-in order:', confirmError)
+      } else {
+        order.status = 'confirmed'
+      }
     }
 
     // Auto-generate an invoice so the retailer immediately sees this order

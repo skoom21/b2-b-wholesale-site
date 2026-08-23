@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { TrendingUp, ShoppingCart, AlertCircle, CreditCard, DollarSign, Package, Clock } from "lucide-react"
-import { fetchDashboardData, fetchCreditRequests, submitCreditRequest, ApiError, type CreditRequest } from "@/lib/api-client"
+import { TrendingUp, ShoppingCart, AlertCircle, CreditCard, DollarSign, Package, Repeat } from "lucide-react"
+import { fetchDashboardData, recordStorePayment, fetchPaymentModelRequests, submitPaymentModelRequest, ApiError, type PaymentModelRequest } from "@/lib/api-client"
 import { useUser } from "@/hooks/use-user"
 
 export default function RetailerDashboard() {
@@ -12,12 +12,55 @@ export default function RetailerDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [pendingRequest, setPendingRequest] = useState<CreditRequest | null>(null)
-  const [showRequestForm, setShowRequestForm] = useState(false)
-  const [requestedAmount, setRequestedAmount] = useState("")
-  const [requestReason, setRequestReason] = useState("")
-  const [submittingRequest, setSubmittingRequest] = useState(false)
-  const [requestError, setRequestError] = useState<string | null>(null)
+  const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState("")
+  const [submittingPayment, setSubmittingPayment] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentLogged, setPaymentLogged] = useState(false)
+
+  const [pendingModelRequest, setPendingModelRequest] = useState<PaymentModelRequest | null>(null)
+  const [showModelRequestForm, setShowModelRequestForm] = useState(false)
+  const [requestedModel, setRequestedModel] = useState("credit")
+  const [requestedFrequency, setRequestedFrequency] = useState("weekly")
+  const [modelRequestReason, setModelRequestReason] = useState("")
+  const [submittingModelRequest, setSubmittingModelRequest] = useState(false)
+  const [modelRequestError, setModelRequestError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadModelRequests = async () => {
+      try {
+        const data = await fetchPaymentModelRequests()
+        const pending = (data.requests || []).find(r => r.status === 'pending')
+        setPendingModelRequest(pending || null)
+      } catch (err) {
+        console.error('[Dashboard] Failed to load payment model requests:', err)
+      }
+    }
+    loadModelRequests()
+  }, [])
+
+  const handleSubmitModelRequest = async () => {
+    if (requestedModel === dashboardData?.store?.payment_model) {
+      setModelRequestError(`You're already on the ${requestedModel} model`)
+      return
+    }
+    try {
+      setSubmittingModelRequest(true)
+      setModelRequestError(null)
+      const result: any = await submitPaymentModelRequest({
+        requested_model: requestedModel as any,
+        requested_billing_frequency: requestedModel === 'subscription' ? requestedFrequency as any : undefined,
+        reason: modelRequestReason || undefined,
+      })
+      setPendingModelRequest(result.request)
+      setShowModelRequestForm(false)
+      setModelRequestReason("")
+    } catch (err: any) {
+      setModelRequestError(err.message || "Failed to submit request")
+    } finally {
+      setSubmittingModelRequest(false)
+    }
+  }
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -41,46 +84,28 @@ export default function RetailerDashboard() {
       }
     }
 
-    const loadCreditRequests = async () => {
-      try {
-        const data = await fetchCreditRequests()
-        const pending = (data.requests || []).find(r => r.transaction_type === 'credit_request_pending')
-        setPendingRequest(pending || null)
-      } catch (err) {
-        console.error('[Dashboard] Failed to load credit requests:', err)
-      }
-    }
-
     loadDashboard()
-    loadCreditRequests()
   }, [])
 
-  const handleSubmitCreditRequest = async () => {
-    const amount = parseFloat(requestedAmount)
-    if (isNaN(amount) || amount <= 0) {
-      setRequestError("Enter a valid amount")
+  const handleLogPayment = async () => {
+    const amount = parseFloat(paymentAmount)
+    if (!amount || amount <= 0) {
+      setPaymentError("Enter a valid amount")
       return
     }
     try {
-      setSubmittingRequest(true)
-      setRequestError(null)
-      await submitCreditRequest(amount, requestReason || undefined)
-      setPendingRequest({
-        id: 'optimistic',
-        amount: 0,
-        balance_before: dashboardData?.store?.credit_limit || 0,
-        balance_after: amount,
-        transaction_type: 'credit_request_pending',
-        notes: requestReason || null,
-        created_at: new Date().toISOString(),
-      })
-      setShowRequestForm(false)
-      setRequestedAmount("")
-      setRequestReason("")
+      setSubmittingPayment(true)
+      setPaymentError(null)
+      const result = await recordStorePayment(dashboardData.store.id, { amount })
+      setDashboardData((prev: any) => ({ ...prev, store: { ...prev.store, credit_used: result.credit_used } }))
+      setShowPaymentForm(false)
+      setPaymentAmount("")
+      setPaymentLogged(true)
+      setTimeout(() => setPaymentLogged(false), 4000)
     } catch (err: any) {
-      setRequestError(err.message || "Failed to submit request")
+      setPaymentError(err.message || "Failed to log payment")
     } finally {
-      setSubmittingRequest(false)
+      setSubmittingPayment(false)
     }
   }
 
@@ -109,9 +134,6 @@ export default function RetailerDashboard() {
   }
 
   const { store, stats, recent_orders, unpaid_invoices, low_stock_products } = dashboardData
-
-  const creditPercentage = store.credit_limit > 0 ? (store.credit_used / store.credit_limit) * 100 : 0
-  const creditColor = creditPercentage > 90 ? 'bg-red-500' : creditPercentage > 75 ? 'bg-yellow-500' : 'bg-green-500'
 
   const statCards = [
     { 
@@ -192,76 +214,49 @@ export default function RetailerDashboard() {
         )}
       </div>
 
-      {/* Credit Limit Card */}
+      {/* Amount Owed Card */}
       <div className="card bg-gradient-to-br from-primary/5 to-primary/10">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-muted-foreground font-medium">Credit Available</p>
+            <p className="text-sm text-muted-foreground font-medium">Amount You Owe</p>
             <p className="text-3xl font-bold text-secondary mt-1">
-              ${store.credit_available.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${store.credit_used.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">Builds up as your orders are confirmed — no limit on ordering.</p>
           </div>
           <CreditCard className="text-primary opacity-20" size={48} />
         </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Credit Used</span>
-            <span className="font-medium">${store.credit_used.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-2">
-            <div 
-              className={`${creditColor} h-2 rounded-full transition-all`}
-              style={{ width: `${Math.min(creditPercentage, 100)}%` }}
-            ></div>
-          </div>
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{creditPercentage.toFixed(1)}% used</span>
-            <span>Limit: ${store.credit_limit.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
-        </div>
 
-        {/* Request Credit Increase */}
+        {/* Log a payment */}
         <div className="mt-4 pt-4 border-t border-primary/10">
-          {pendingRequest ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock size={16} className="text-primary" />
-              Credit increase to ${pendingRequest.balance_after.toLocaleString()} is pending admin review.
-            </div>
-          ) : showRequestForm ? (
+          {paymentLogged && (
+            <p className="text-sm text-primary font-medium mb-2">Payment logged — thanks!</p>
+          )}
+          {showPaymentForm ? (
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-foreground mb-1">Requested Credit Limit ($)</label>
+                <label className="block text-xs font-medium text-foreground mb-1">Amount Paid ($)</label>
                 <input
                   type="number"
-                  min={store.credit_limit + 1}
+                  min={0.01}
                   step="0.01"
-                  value={requestedAmount}
-                  onChange={(e) => setRequestedAmount(e.target.value)}
-                  placeholder={`Higher than $${store.credit_limit.toLocaleString()}`}
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="How much did you pay?"
                   className="input w-full"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">Reason (optional)</label>
-                <input
-                  type="text"
-                  value={requestReason}
-                  onChange={(e) => setRequestReason(e.target.value)}
-                  placeholder="e.g. Increasing order volume"
-                  className="input w-full"
-                />
-              </div>
-              {requestError && <p className="text-xs text-destructive">{requestError}</p>}
+              {paymentError && <p className="text-xs text-destructive">{paymentError}</p>}
               <div className="flex gap-2">
                 <button
-                  onClick={handleSubmitCreditRequest}
-                  disabled={submittingRequest}
+                  onClick={handleLogPayment}
+                  disabled={submittingPayment}
                   className="btn-primary text-sm px-4 py-2 disabled:opacity-50"
                 >
-                  {submittingRequest ? "Submitting..." : "Submit Request"}
+                  {submittingPayment ? "Saving..." : "Save Payment"}
                 </button>
                 <button
-                  onClick={() => { setShowRequestForm(false); setRequestError(null) }}
+                  onClick={() => { setShowPaymentForm(false); setPaymentError(null) }}
                   className="btn-ghost text-sm px-4 py-2"
                 >
                   Cancel
@@ -270,13 +265,95 @@ export default function RetailerDashboard() {
             </div>
           ) : (
             <button
-              onClick={() => setShowRequestForm(true)}
+              onClick={() => setShowPaymentForm(true)}
               className="text-sm font-semibold text-primary hover:underline"
             >
-              Request Credit Increase
+              I've Made a Payment
             </button>
           )}
+          <p className="text-xs text-muted-foreground mt-2">
+            Paid in person instead? Your account manager can record that on their end too.
+          </p>
         </div>
+      </div>
+
+      {/* Payment Model */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-2">
+          <Repeat className="text-primary" size={18} />
+          <h2 className="text-lg font-bold text-secondary">Your Payment Model</h2>
+        </div>
+        <p className="text-sm font-semibold text-secondary capitalize">
+          {(store.payment_model || 'credit').replace('_', ' ')}
+          {store.billing_frequency && ` — billed ${store.billing_frequency}`}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1 mb-4">
+          {store.payment_model === 'per_order'
+            ? 'You pay for each order up front.'
+            : store.payment_model === 'subscription'
+            ? `Dues are consolidated into one invoice every ${store.billing_frequency || 'period'}${store.next_billing_date ? `, next on ${new Date(store.next_billing_date).toLocaleDateString('en-CA')}` : ''}.`
+            : 'Your dues build up as you order, and you pay them down whenever suits you.'}
+        </p>
+
+        {pendingModelRequest ? (
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            Request to switch to <span className="font-medium capitalize">{pendingModelRequest.requested_model.replace('_', ' ')}</span> is pending review.
+          </p>
+        ) : showModelRequestForm ? (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Requested Model</label>
+              <select value={requestedModel} onChange={(e) => setRequestedModel(e.target.value)} className="input w-full">
+                <option value="credit">Credit (net terms)</option>
+                <option value="per_order">Per Order (pay up front)</option>
+                <option value="subscription">Subscription (consolidated billing)</option>
+              </select>
+            </div>
+            {requestedModel === 'subscription' && (
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Billing Frequency</label>
+                <select value={requestedFrequency} onChange={(e) => setRequestedFrequency(e.target.value)} className="input w-full">
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Biweekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Reason (optional)</label>
+              <input
+                type="text"
+                value={modelRequestReason}
+                onChange={(e) => setModelRequestReason(e.target.value)}
+                placeholder="e.g. Would rather pay per order"
+                className="input w-full"
+              />
+            </div>
+            {modelRequestError && <p className="text-xs text-destructive">{modelRequestError}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={handleSubmitModelRequest}
+                disabled={submittingModelRequest}
+                className="btn-primary text-sm px-4 py-2 disabled:opacity-50"
+              >
+                {submittingModelRequest ? "Submitting..." : "Submit Request"}
+              </button>
+              <button
+                onClick={() => { setShowModelRequestForm(false); setModelRequestError(null) }}
+                className="btn-ghost text-sm px-4 py-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowModelRequestForm(true)}
+            className="text-sm font-semibold text-primary hover:underline"
+          >
+            Request a different payment model
+          </button>
+        )}
       </div>
 
       {/* Stats Grid */}

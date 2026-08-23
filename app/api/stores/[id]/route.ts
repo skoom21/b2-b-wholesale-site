@@ -90,13 +90,44 @@ export async function PUT(
 
     // Admin-only fields
     if (isAdmin) {
-      const adminFields = ['email', 'tier', 'status', 'store_type', 'credit_limit', 'tax_number']
+      const adminFields = ['email', 'tier', 'status', 'store_type', 'credit_limit', 'tax_number', 'payment_model', 'billing_frequency']
       adminFields.forEach(field => {
         if (body[field] !== undefined) {
           updateData[field] = body[field]
         }
       })
-      
+
+      // Validate payment_model if provided
+      if (body.payment_model && !['credit', 'per_order', 'subscription'].includes(body.payment_model)) {
+        return apiValidationError([{
+          field: 'payment_model',
+          message: 'Invalid payment_model. Must be one of: credit, per_order, subscription'
+        }])
+      }
+
+      // Validate billing_frequency if provided
+      if (body.billing_frequency && !['weekly', 'biweekly', 'monthly'].includes(body.billing_frequency)) {
+        return apiValidationError([{
+          field: 'billing_frequency',
+          message: 'Invalid billing_frequency. Must be one of: weekly, biweekly, monthly'
+        }])
+      }
+
+      // Switching to subscription needs a frequency; switching away clears it
+      if (body.payment_model === 'subscription' && !body.billing_frequency && !existingStore.billing_frequency) {
+        return apiValidationError([{
+          field: 'billing_frequency',
+          message: 'billing_frequency is required when setting payment_model to subscription'
+        }])
+      }
+      if (body.payment_model && body.payment_model !== 'subscription') {
+        updateData.billing_frequency = null
+        updateData.next_billing_date = null
+      } else if (body.payment_model === 'subscription' || (existingStore.payment_model === 'subscription' && body.billing_frequency)) {
+        updateData.next_billing_date = existingStore.next_billing_date
+          || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+      }
+
       // Validate tier if provided
       if (body.tier && !['gold', 'silver', 'standard'].includes(body.tier)) {
         return apiValidationError([{
