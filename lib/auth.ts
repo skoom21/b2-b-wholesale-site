@@ -93,16 +93,25 @@ export async function createStore(userId: string, storeData: {
   postal_code?: string
 }) {
   const supabase = createClient()
-  
+
   // Validate required fields
   if (!storeData.name || !storeData.email || !storeData.store_type || !storeData.city) {
     throw new Error('Missing required store information')
+  }
+
+  // stores.brand_id is NOT NULL; public self-registration has no
+  // brand-picker UI yet, so every new store hardcodes to Teetoz, same
+  // as handle_new_user() does for the user's own row.
+  const { data: brandId, error: brandError } = await supabase.rpc('teetoz_brand_id')
+  if (brandError || !brandId) {
+    throw new Error('Failed to resolve brand for new store')
   }
 
   const { data, error } = await supabase
     .from('stores')
     .insert({
       user_id: userId,
+      brand_id: brandId,
       name: storeData.name,
       email: storeData.email,
       phone: storeData.phone || null,

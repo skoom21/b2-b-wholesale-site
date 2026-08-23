@@ -1,17 +1,14 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient, requireAuth, getUserRole } from '@/lib/api/auth'
+import { createServerSupabaseClient, requireBrandContext } from '@/lib/api/auth'
 import { apiSuccess, apiError, apiBadRequest, apiValidationError } from '@/lib/api/response'
 import { parsePagination, calculatePagination, getPaginationRange } from '@/lib/api/pagination'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('[ORDERS API] GET request started')
-    const user = await requireAuth()
-    console.log('[ORDERS API] User authenticated:', user.id)
+    const profile = await requireBrandContext()
     const supabase = await createServerSupabaseClient()
     const searchParams = request.nextUrl.searchParams
-    const role = getUserRole(user)
-    console.log('[ORDERS API] User role:', role)
+    const role = profile.role
     
     // Parse pagination
     const { page, perPage } = parsePagination(searchParams)
@@ -55,26 +52,23 @@ export async function GET(request: NextRequest) {
           tier
         )
       `, { count: 'exact' })
-    
+      .eq('brand_id', profile.brand_id)
+
     // RLS: Retailers can only see their own orders
     if (role === 'retailer') {
-      console.log('[ORDERS API] Fetching store for retailer:', user.id)
       const { data: store } = await supabase
         .from('stores')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .single()
-      
-      console.log('[ORDERS API] Store found:', store)
-      
+
       if (!store) {
         return apiError('Store not found for user', 'STORE_NOT_FOUND', 404)
       }
-      
+
       query = query.eq('store_id', store.id)
-      console.log('[ORDERS API] Query filtered by store_id:', store.id)
-    } else if (storeId && role === 'admin') {
-      // Admin can filter by store_id
+    } else if (storeId && (role === 'admin' || role === 'staff')) {
+      // Admin/staff can filter by store_id within their own brand
       query = query.eq('store_id', storeId)
     }
     
@@ -120,23 +114,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth()
+    const profile = await requireBrandContext()
     const supabase = await createServerSupabaseClient()
-    const role = getUserRole(user)
     const body = await request.json()
-    
+
     // Validate request body
     const { items, shipping_address, customer_notes } = body
-    
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       return apiBadRequest('Order must contain at least one item')
     }
-    
+
     // Get user's store
     const { data: store, error: storeError } = await supabase
       .from('stores')
       .select('id, tier, status, credit_limit, credit_used')
-      .eq('user_id', user.id)
+      .eq('user_id', profile.id)
+      .eq('brand_id', profile.brand_id)
       .single()
     
     if (storeError || !store) {
@@ -242,6 +236,7 @@ export async function POST(request: NextRequest) {
     let orderError: any = null
     const baseOrderPayload: Record<string, any> = {
       store_id: store.id,
+      brand_id: profile.brand_id,
       status: 'pending',
       subtotal,
       shipping_cost: shippingCost,
@@ -261,7 +256,7 @@ export async function POST(request: NextRequest) {
 
     for (let attempt = 0; attempt < 5; attempt++) {
       const payload: Record<string, any> = { ...baseOrderPayload, order_number: orderNumber }
-      if (includeCreatedBy) payload.created_by = user.id
+      if (includeCreatedBy) payload.created_by = profile.id
 
       const result = await supabase.from('orders').insert(payload).select().single()
 

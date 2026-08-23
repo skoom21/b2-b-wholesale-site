@@ -6,6 +6,7 @@ import Link from "next/link"
 import { LogOut, Menu, X } from "lucide-react"
 import { signOut } from "@/lib/auth"
 import { UserProvider, useUser } from "@/hooks/use-user"
+import { PoweredByFooter } from "@/components/powered-by-footer"
 
 function RetailerLayoutContent({ children }) {
   const router = useRouter()
@@ -109,6 +110,7 @@ function RetailerLayoutContent({ children }) {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-12">{children}</main>
+      <PoweredByFooter />
     </div>
   )
 }

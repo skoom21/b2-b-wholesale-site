@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/api/auth'
+import { createServerSupabaseClient, requireBrandContext } from '@/lib/api/auth'
 import { apiSuccess, apiError } from '@/lib/api/response'
 
 interface Category {
@@ -63,18 +63,20 @@ function buildCategoryTree(flatCategories: any[]): Category[] {
 
 export async function GET(request: NextRequest) {
   try {
+    const profile = await requireBrandContext()
     const supabase = await createServerSupabaseClient()
     const searchParams = request.nextUrl.searchParams
     const flat = searchParams.get('flat') === 'true'
     const activeOnly = searchParams.get('active_only') !== 'false' // Default to true
-    
+
     // Build query
     let query = supabase
       .from('categories')
       .select('*')
+      .eq('brand_id', profile.brand_id)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true })
-    
+
     if (activeOnly) {
       query = query.eq('is_active', true)
     }

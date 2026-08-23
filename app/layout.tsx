@@ -8,9 +8,9 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Teetoz - Indian Food Distribution",
+  title: "Pallet — The Platform for Wholesale Brands",
   description:
-    "Centralized Order Management System for verified retailers. Real-time inventory, tiered pricing, and streamlined logistics for Indian food distribution across Canada.",
+    "Pallet gives wholesale brands their own private inventory, order, customer, and staff platform — fully isolated per brand, set up in a day.",
   generator: "v0.app",
   icons: {
     icon: [

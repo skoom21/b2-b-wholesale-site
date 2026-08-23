@@ -438,3 +438,165 @@ export async function bulkDeleteProducts(ids: string[]) {
     body: JSON.stringify({ ids }),
   })
 }
+
+// Owner API — brands
+export type Brand = {
+  id: string
+  slug: string
+  name: string
+  status: 'active' | 'suspended' | 'cancelled'
+  contact_email: string | null
+  contact_phone: string | null
+  notes: string | null
+  created_at: string
+  store_count?: number
+  admin_email?: string | null
+  brand_subscriptions?: {
+    id: string
+    plan_name: string
+    billing_interval: 'monthly' | 'yearly'
+    amount: number
+    status: 'trialing' | 'active' | 'past_due' | 'cancelled'
+    current_period_end: string
+  }[]
+}
+
+export async function fetchBrands() {
+  return apiClient<{ brands: Brand[] }>('/api/owner/brands')
+}
+
+export async function fetchBrand(id: string) {
+  return apiClient<{
+    brand: Brand
+    staff: any[]
+    admins: { id: string; email: string; full_name: string; phone: string | null; is_active: boolean; last_login_at: string | null; created_at: string }[]
+    counts: { stores: number; products: number; orders: number }
+  }>(`/api/owner/brands/${id}`)
+}
+
+export async function createBrandAdmin(brandId: string, data: { email: string; full_name: string }) {
+  return apiClient<{ admin_account: { id: string; email: string; temp_password: string } }>(
+    `/api/owner/brands/${brandId}/admin`,
+    { method: 'POST', body: JSON.stringify(data) }
+  )
+}
+
+export async function sendBrandAdminPasswordReset(email: string) {
+  const { createClient } = await import('@/lib/supabase/client')
+  const supabase = createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  })
+  if (error) throw error
+}
+
+export async function createBrand(data: {
+  name: string
+  slug: string
+  admin_email: string
+  admin_full_name: string
+  contact_email?: string
+  contact_phone?: string
+  plan_name?: string
+  billing_interval?: 'monthly' | 'yearly'
+  amount?: number
+  notes?: string
+}) {
+  return apiClient<{ brand: Brand; admin_account: { id: string; email: string; temp_password: string } | null; admin_account_error?: string }>('/api/owner/brands', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateBrand(id: string, data: {
+  name?: string
+  status?: 'active' | 'suspended' | 'cancelled'
+  contact_email?: string
+  contact_phone?: string
+  notes?: string
+  subscription?: {
+    plan_name?: string
+    billing_interval?: 'monthly' | 'yearly'
+    amount?: number
+    status?: 'trialing' | 'active' | 'past_due' | 'cancelled'
+    current_period_end?: string
+  }
+}) {
+  return apiClient<{ brand: Brand }>(`/api/owner/brands/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+// Admin API — staff
+export type StaffMember = {
+  id: string
+  user_id: string
+  brand_id: string
+  job_title: string | null
+  pay_type: 'hourly' | 'salary'
+  pay_rate: number
+  employment_status: 'active' | 'on_leave' | 'terminated'
+  hire_date: string
+  users?: { id: string; email: string; full_name: string; role: string; is_active: boolean }
+}
+
+export async function fetchStaff() {
+  return apiClient<{ staff: StaffMember[] }>('/api/admin/staff')
+}
+
+export async function createStaff(data: {
+  email: string
+  full_name: string
+  phone?: string
+  job_title?: string
+  pay_type?: 'hourly' | 'salary'
+  pay_rate?: number
+  hire_date?: string
+}) {
+  return apiClient<{ staff: StaffMember; account: { id: string; email: string; temp_password: string } }>('/api/admin/staff', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+// Admin API — payroll
+export type PayrollRecord = {
+  id: string
+  staff_id: string
+  brand_id: string
+  period_start: string
+  period_end: string
+  gross_amount: number
+  deductions: number
+  net_amount: number
+  status: 'open' | 'processed' | 'paid'
+  paid_at: string | null
+  staff_details?: { id: string; job_title: string | null; users: { id: string; full_name: string; email: string } }
+}
+
+export async function fetchPayrollRecords(staffId?: string) {
+  const qs = staffId ? `?staff_id=${staffId}` : ''
+  return apiClient<{ records: PayrollRecord[] }>(`/api/admin/payroll${qs}`)
+}
+
+export async function createPayrollRecord(data: {
+  staff_id: string
+  period_start: string
+  period_end: string
+  gross_amount: number
+  deductions?: number
+  notes?: string
+}) {
+  return apiClient<{ record: PayrollRecord }>('/api/admin/payroll', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updatePayrollStatus(id: string, status: 'open' | 'processed' | 'paid') {
+  return apiClient<{ record: PayrollRecord }>(`/api/admin/payroll/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}

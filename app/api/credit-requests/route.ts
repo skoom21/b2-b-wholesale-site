@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createServerSupabaseClient()
     const role = getUserRole(user)
 
-    if (role === 'admin' || role === 'manager') {
+    if (role === 'admin' || role === 'staff' || role === 'owner') {
       const { data, error } = await supabase
         .from('store_credit_history')
         .select('id, store_id, amount, balance_before, balance_after, transaction_type, notes, created_at, stores(id, name, email, credit_limit)')

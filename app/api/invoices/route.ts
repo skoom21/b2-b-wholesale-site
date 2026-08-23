@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
       if (store) {
         query = query.eq('store_id', store.id)
       }
-    } else if (storeId && role === 'admin') {
-      // Admin can filter by store
+    } else if (storeId && (role === 'admin' || role === 'staff' || role === 'owner')) {
+      // Admin/staff/owner can filter by store
       query = query.eq('store_id', storeId)
     }
     
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
     const role = getUserRole(user)
     const body = await request.json()
     
-    // Only admins can create invoices
-    if (role !== 'admin') {
+    // Only admins/staff can create invoices
+    if (role !== 'admin' && role !== 'staff' && role !== 'owner') {
       return apiError('Only administrators can create invoices', 'FORBIDDEN', 403)
     }
     

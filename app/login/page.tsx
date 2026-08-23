@@ -52,10 +52,13 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold">
-            T
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
+            style={{ background: "linear-gradient(135deg, #0f766e, #6366f1)" }}
+          >
+            P
           </div>
-          <span className="text-xl font-semibold tracking-tight text-foreground">Teetoz</span>
+          <span className="text-xl font-semibold tracking-tight text-foreground">Pallet</span>
         </div>
 
         <div className="card">

@@ -10,10 +10,7 @@ export async function createServerSupabaseClient() {
   }
 
   const cookieStore = await cookies()
-  const allCookies = cookieStore.getAll()
-  
-  console.log('[AUTH] Creating Supabase client with cookies:', allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 50) + '...' })))
-  
+
   const client = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,50 +27,94 @@ export async function createServerSupabaseClient() {
       },
     }
   )
-  
-  // Immediately verify the session is loaded
-  const { data: { session } } = await client.auth.getSession()
-  console.log('[AUTH] Session loaded:', { 
-    hasSession: !!session, 
-    userId: session?.user?.id,
-    accessToken: session?.access_token?.substring(0, 20) + '...'
-  })
-  
+
   return client
 }
 
+// Raw Supabase Auth user (JWT-backed). Kept for loose/optional-auth call
+// sites that don't need authorization or brand scoping (e.g. public
+// product listings that only check "is someone logged in at all").
 export async function getAuthUser() {
   const supabase = await createServerSupabaseClient()
   const { data: { user }, error } = await supabase.auth.getUser()
-  
+
   if (error || !user) {
     return null
   }
-  
+
   return user
 }
 
-export async function requireAuth() {
-  const user = await getAuthUser()
-  
-  if (!user) {
+export type UserRole = 'owner' | 'admin' | 'staff' | 'retailer' | 'manager'
+
+export type UserProfile = {
+  id: string
+  email: string
+  role: UserRole
+  brand_id: string | null
+  is_active: boolean
+}
+
+// The canonical, DB-backed identity + role + brand for every route that
+// actually needs to authorize or scope a query. public.users is the
+// single source of truth here (not the JWT's user_metadata, which two
+// stores routes used to prefer inconsistently, and which can't carry
+// brand_id without another sync mechanism). Client-side/cosmetic
+// redirect guards (lib/auth.ts, proxy.ts) intentionally keep reading
+// user_metadata.role instead — that's not the security boundary, RLS +
+// these helpers are.
+export async function getCurrentUserProfile(): Promise<UserProfile | null> {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('id, email, role, brand_id, is_active')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile) return null
+  return profile as UserProfile
+}
+
+export async function requireAuth(): Promise<UserProfile> {
+  const profile = await getCurrentUserProfile()
+  if (!profile) {
     throw new Error('Unauthorized')
   }
-  
-  return user
+  return profile
 }
 
-export async function requireAdmin() {
-  const user = await requireAuth()
-  const role = user.user_metadata?.role || 'retailer'
-  
-  if (role !== 'admin') {
+export async function requireAdmin(): Promise<UserProfile> {
+  const profile = await requireAuth()
+  if (!['admin', 'staff'].includes(profile.role)) {
     throw new Error('Forbidden: Admin access required')
   }
-  
-  return user
+  return profile
 }
 
-export function getUserRole(user: any): 'admin' | 'retailer' | 'manager' {
-  return user?.user_metadata?.role || 'retailer'
+export async function requireOwner(): Promise<UserProfile> {
+  const profile = await requireAuth()
+  if (profile.role !== 'owner') {
+    throw new Error('Forbidden: Owner access required')
+  }
+  return profile
+}
+
+// Every brand-scoped route (almost everything except owner-only routes)
+// uses this and filters its queries by the returned brand_id.
+export async function requireBrandContext(): Promise<UserProfile & { brand_id: string }> {
+  const profile = await requireAuth()
+  if (!profile.brand_id) {
+    throw new Error('Forbidden: No brand context')
+  }
+  return profile as UserProfile & { brand_id: string }
+}
+
+// Accepts either the new canonical profile (.role directly) or a raw
+// Supabase Auth user (.user_metadata.role) as a safety net for any
+// call site still passing the old shape.
+export function getUserRole(user: any): UserRole {
+  return user?.role || user?.user_metadata?.role || 'retailer'
 }

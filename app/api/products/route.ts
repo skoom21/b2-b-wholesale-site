@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient, getAuthUser, getUserRole, requireAdmin } from '@/lib/api/auth'
+import { createServerSupabaseClient, requireBrandContext, requireAdmin } from '@/lib/api/auth'
 import { apiSuccess, apiError, apiBadRequest, apiValidationError } from '@/lib/api/response'
 import { parsePagination, calculatePagination, getPaginationRange } from '@/lib/api/pagination'
 
 export async function GET(request: NextRequest) {
   try {
+    const profile = await requireBrandContext()
     const supabase = await createServerSupabaseClient()
-    const user = await getAuthUser()
     const searchParams = request.nextUrl.searchParams
     
     // Parse pagination
@@ -52,7 +52,8 @@ export async function GET(request: NextRequest) {
           slug
         )
       `, { count: 'exact' })
-    
+      .eq('brand_id', profile.brand_id)
+
     // Apply filters
     if (categoryId) {
       query = query.eq('category_id', categoryId)
@@ -92,20 +93,17 @@ export async function GET(request: NextRequest) {
       return apiError('Failed to fetch products', 'DATABASE_ERROR', 500, error)
     }
     
-    // Get user's store tier for pricing (if authenticated)
+    // Get user's store tier for pricing
     let userTier: 'gold' | 'silver' | 'standard' = 'standard'
-    if (user) {
-      const role = getUserRole(user)
-      if (role === 'retailer') {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('tier')
-          .eq('user_id', user.id)
-          .single()
-        
-        if (store) {
-          userTier = store.tier
-        }
+    if (profile.role === 'retailer') {
+      const { data: store } = await supabase
+        .from('stores')
+        .select('tier')
+        .eq('user_id', profile.id)
+        .single()
+
+      if (store) {
+        userTier = store.tier
       }
     }
     
@@ -131,7 +129,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin()
+    const profile = await requireAdmin()
+    if (!profile.brand_id) {
+      return apiError('No brand context', 'FORBIDDEN', 403)
+    }
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
     
@@ -188,13 +189,14 @@ export async function POST(request: NextRequest) {
       }])
     }
     
-    // Validate category exists
+    // Validate category exists and belongs to the same brand
     const { data: category } = await supabase
       .from('categories')
       .select('id')
       .eq('id', body.category_id)
+      .eq('brand_id', profile.brand_id)
       .single()
-    
+
     if (!category) {
       return apiValidationError([{
         field: 'category_id',
@@ -247,6 +249,7 @@ export async function POST(request: NextRequest) {
     const { data: product, error } = await supabase
       .from('products')
       .insert({
+        brand_id: profile.brand_id,
         sku: body.sku,
         name: body.name,
         description: body.description || null,
@@ -256,12 +259,11 @@ export async function POST(request: NextRequest) {
         silver_price: body.silver_price || null,
         stock_quantity: stockQuantity,
         low_stock_threshold: lowStockThreshold,
-        low_stock_threshold: lowStockThreshold,
         stock_status: stockStatus,
         image_url: body.image_url || null,
         featured: body.is_featured || false,
         is_active: body.is_active !== undefined ? body.is_active : true,
-        unit: body.unit || 'Piece',      
+        unit: body.unit || 'Piece',
       })
       .select()
       .single()

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient, requireAdmin, getAuthUser } from '@/lib/api/auth'
-import { apiSuccess, apiError, apiNotFound, apiValidationError, apiForbidden } from '@/lib/api/response'
+import { createServerSupabaseClient, getCurrentUserProfile } from '@/lib/api/auth'
+import { apiSuccess, apiError, apiNotFound, apiValidationError, apiForbidden, apiBadRequest } from '@/lib/api/response'
 
 export async function GET(
   request: NextRequest,
@@ -8,37 +8,31 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const user = await getAuthUser()
+    const profile = await getCurrentUserProfile()
     const supabase = await createServerSupabaseClient()
-    
+
     const { data: store, error } = await supabase
       .from('stores')
       .select('*')
       .eq('id', id)
       .single()
-    
+
     if (error || !store) {
       return apiNotFound('Store not found')
     }
-    
+
     // RLS check for retailers
-    if (user) {
-      const { data: profile } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+    if (profile) {
+      const isOwner = profile.role === 'owner'
+      const isAdmin = (profile.role === 'admin' || profile.role === 'staff') && profile.brand_id === store.brand_id
 
-      const role = profile?.role || user.user_metadata?.role || 'retailer'
-      const isAdmin = role === 'admin' || role === 'manager'
-
-      if (!isAdmin && store.user_id !== user.id) {
+      if (!isOwner && !isAdmin && store.user_id !== profile.id) {
         return apiForbidden('You can only access your own store')
       }
     }
-    
+
     return apiSuccess({ store })
-    
+
   } catch (error: any) {
     console.error('[STORES API] Error:', error)
     return apiError(error.message || 'Failed to fetch store', 'FETCH_ERROR', 500)
@@ -51,33 +45,29 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const user = await getAuthUser()
+    const profile = await getCurrentUserProfile()
+    if (!profile) {
+      return apiError('Unauthorized', 'UNAUTHORIZED', 401)
+    }
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
-    
+
     // Check if store exists
     const { data: existingStore, error: fetchError } = await supabase
       .from('stores')
       .select('*')
       .eq('id', id)
       .single()
-    
+
     if (fetchError || !existingStore) {
       return apiNotFound('Store not found')
     }
-    
-    // Get user profile to check permissions
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user!.id)
-      .single()
 
-    const role = profile?.role || user!.user_metadata?.role || 'retailer'
-    const isAdmin = role === 'admin' || role === 'manager'
-    const isOwnStore = existingStore.user_id === user!.id
+    const isOwner = profile.role === 'owner'
+    const isAdmin = isOwner || ((profile.role === 'admin' || profile.role === 'staff') && profile.brand_id === existingStore.brand_id)
+    const isOwnStore = existingStore.user_id === profile.id
 
-    // Only admin or store owner can update
+    // Only admin/owner or store owner can update
     if (!isAdmin && !isOwnStore) {
       return apiForbidden('You do not have permission to update this store')
     }
@@ -187,7 +177,7 @@ export async function PUT(
           balance_after: newLimit,
           transaction_type: 'admin_adjustment',
           notes: 'Credit limit adjusted directly by admin',
-          created_by: user!.id,
+          created_by: profile.id,
         })
       }
     }

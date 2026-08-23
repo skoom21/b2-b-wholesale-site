@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient, requireAuth, getUserRole, requireAdmin } from '@/lib/api/auth'
+import { createServerSupabaseClient, requireAuth } from '@/lib/api/auth'
 import { apiSuccess, apiError, apiNotFound, apiForbidden, apiValidationError, apiBadRequest } from '@/lib/api/response'
 
 export async function GET(
@@ -8,10 +8,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const user = await requireAuth()
+    const profile = await requireAuth()
     const supabase = await createServerSupabaseClient()
-    const role = getUserRole(user)
-    
+    const role = profile.role
+
     // Fetch order with all details
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -31,22 +31,27 @@ export async function GET(
       `)
       .eq('id', id)
       .single()
-    
+
     if (orderError || !order) {
       return apiNotFound('Order not found')
     }
-    
-    // RLS: Check if retailer owns this order
+
+    const isOwner = role === 'owner'
+    const isAdminLike = (role === 'admin' || role === 'staff') && profile.brand_id === order.brand_id
+
+    // RLS: Check if retailer owns this order, or admin/staff belongs to its brand
     if (role === 'retailer') {
       const { data: store } = await supabase
         .from('stores')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .single()
-      
+
       if (!store || order.store_id !== store.id) {
         return apiForbidden('Access denied to this order')
       }
+    } else if (!isOwner && !isAdminLike) {
+      return apiForbidden('Access denied to this order')
     }
     
     // Fetch order items
@@ -98,44 +103,49 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const user = await requireAuth()
+    const profile = await requireAuth()
     const supabase = await createServerSupabaseClient()
-    const role = getUserRole(user)
+    const role = profile.role
     const body = await request.json()
-    
+
     // Fetch existing order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select('*, stores(tier)')
       .eq('id', id)
       .single()
-    
+
     if (orderError || !order) {
       return apiNotFound('Order not found')
     }
-    
+
+    const isOwner = role === 'owner'
+    const isAdminLike = (role === 'admin' || role === 'staff') && profile.brand_id === order.brand_id
+
     // RLS: Check permissions
     if (role === 'retailer') {
       const { data: store } = await supabase
         .from('stores')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .single()
-      
+
       if (!store || order.store_id !== store.id) {
         return apiForbidden('Access denied to this order')
       }
-      
+
       // Retailers can only cancel pending orders
       if (body.status && body.status !== 'cancelled') {
         return apiForbidden('Retailers can only cancel orders')
       }
-      
+
       if (body.status === 'cancelled' && order.status !== 'pending') {
         return apiBadRequest('Can only cancel pending orders')
       }
+    } else if (!isOwner && !isAdminLike) {
+      return apiForbidden('Access denied to this order')
     }
-    
+
     // Validate status if provided
     if (body.status) {
       const validStatuses = ['pending', 'processing', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled']
@@ -146,8 +156,8 @@ export async function PATCH(
         }])
       }
 
-      // Validate status workflow (admin only)
-      if (role === 'admin') {
+      // Validate status workflow (admin/staff/owner)
+      if (isOwner || isAdminLike) {
         const statusFlow: { [key: string]: string[] } = {
           'pending': ['processing', 'confirmed', 'cancelled'],
           'processing': ['confirmed', 'cancelled'],
@@ -219,8 +229,8 @@ export async function PATCH(
       updateData.status = body.status
     }
     
-    // Admin can update additional fields
-    if (role === 'admin') {
+    // Admin/staff/owner can update additional fields
+    if (isOwner || isAdminLike) {
       if (body.shipping_cost !== undefined) updateData.shipping_cost = body.shipping_cost
       if (body.discount_amount !== undefined) updateData.discount_amount = body.discount_amount
       if (body.notes !== undefined) updateData.notes = body.notes

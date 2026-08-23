@@ -76,8 +76,8 @@ export async function PATCH(
     const role = getUserRole(user)
     const body = await request.json()
     
-    // Only admins can update invoices
-    if (role !== 'admin') {
+    // Only admins/staff can update invoices
+    if (role !== 'admin' && role !== 'staff' && role !== 'owner') {
       return apiForbidden('Only administrators can update invoices')
     }
     

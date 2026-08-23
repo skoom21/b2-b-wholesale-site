@@ -50,6 +50,11 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
   console.log('[MIDDLEWARE] getUser result:', { hasUser: !!user, userId: user?.id, role: user?.user_metadata?.role })
 
+  const dashboardPathForRole = (role: string) =>
+    role === 'owner' ? '/owner/dashboard' :
+    (role === 'admin' || role === 'staff' || role === 'manager') ? '/admin/dashboard' :
+    '/retailer/dashboard'
+
   // Redirect authenticated users away from login/register pages to their dashboard
   if (
     user &&
@@ -57,7 +62,7 @@ export async function updateSession(request: NextRequest) {
      request.nextUrl.pathname.startsWith('/register'))
   ) {
     const role = user.user_metadata?.role || 'retailer'
-    const dashboardPath = role === 'admin' ? '/admin/dashboard' : '/retailer/dashboard'
+    const dashboardPath = dashboardPathForRole(role)
     console.log('[MIDDLEWARE] Authenticated user on auth page, redirecting to', dashboardPath)
     const url = request.nextUrl.clone()
     url.pathname = dashboardPath
@@ -69,9 +74,22 @@ export async function updateSession(request: NextRequest) {
     const role = user.user_metadata?.role || 'retailer'
     const isAdminPath = request.nextUrl.pathname.startsWith('/admin')
     const isRetailerPath = request.nextUrl.pathname.startsWith('/retailer')
+    const isOwnerPath = request.nextUrl.pathname.startsWith('/owner')
+    const isOwner = role === 'owner'
+    const isAdminLike = role === 'admin' || role === 'staff' || role === 'manager'
+    const isRetailer = !isOwner && !isAdminLike
 
-    // Admin trying to access retailer routes
-    if (role === 'admin' && isRetailerPath) {
+    // Owner trying to access admin/retailer routes, or anyone non-owner on owner routes
+    if ((isOwner && (isAdminPath || isRetailerPath)) || (!isOwner && isOwnerPath)) {
+      const dashboardPath = dashboardPathForRole(role)
+      console.log('[MIDDLEWARE] Wrong-role route access, redirecting to', dashboardPath)
+      const url = request.nextUrl.clone()
+      url.pathname = dashboardPath
+      return NextResponse.redirect(url)
+    }
+
+    // Admin/staff trying to access retailer routes
+    if (isAdminLike && isRetailerPath) {
       console.log('[MIDDLEWARE] Admin user on retailer route, redirecting to /admin/dashboard')
       const url = request.nextUrl.clone()
       url.pathname = '/admin/dashboard'
@@ -79,7 +97,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Retailer trying to access admin routes
-    if (role === 'retailer' && isAdminPath) {
+    if (isRetailer && isAdminPath) {
       console.log('[MIDDLEWARE] Retailer user on admin route, redirecting to /retailer/dashboard')
       const url = request.nextUrl.clone()
       url.pathname = '/retailer/dashboard'
@@ -93,6 +111,7 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/register') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
+    !request.nextUrl.pathname.startsWith('/reset-password') &&
     request.nextUrl.pathname !== '/'
   ) {
     console.log('[MIDDLEWARE] No user found, redirecting to /login')
