@@ -96,7 +96,10 @@ export async function PATCH(
       if (error) throw error
     }
 
-    // Optional subscription update (latest row for this brand)
+    // Subscription create-or-update (latest row for this brand). Brands
+    // created before every brand auto-got a trial row on creation may
+    // have no subscription row at all — insert one instead of silently
+    // no-op'ing, so setting a plan always works regardless of history.
     if (body.subscription) {
       const { data: latestSub } = await supabase
         .from('brand_subscriptions')
@@ -114,8 +117,22 @@ export async function PATCH(
       if (s.status !== undefined) subUpdate.status = s.status
       if (s.current_period_end !== undefined) subUpdate.current_period_end = s.current_period_end
 
-      if (latestSub && Object.keys(subUpdate).length > 0) {
-        await supabase.from('brand_subscriptions').update(subUpdate).eq('id', latestSub.id)
+      if (Object.keys(subUpdate).length > 0) {
+        if (latestSub) {
+          await supabase.from('brand_subscriptions').update(subUpdate).eq('id', latestSub.id)
+        } else {
+          const today = new Date()
+          await supabase.from('brand_subscriptions').insert({
+            brand_id: id,
+            plan_name: subUpdate.plan_name ?? null,
+            billing_interval: subUpdate.billing_interval ?? 'monthly',
+            amount: subUpdate.amount ?? 0,
+            status: subUpdate.status ?? 'active',
+            current_period_start: today.toISOString().slice(0, 10),
+            current_period_end: subUpdate.current_period_end
+              ?? new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          })
+        }
       }
     }
 

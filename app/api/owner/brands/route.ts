@@ -88,15 +88,24 @@ export async function POST(request: NextRequest) {
       return apiError('Failed to create brand', 'DATABASE_ERROR', 500, brandError)
     }
 
-    // Optional starter subscription record (tracked only, no processor)
-    if (body.plan_name) {
-      await supabase.from('brand_subscriptions').insert({
-        brand_id: brand.id,
-        plan_name: body.plan_name,
-        billing_interval: body.billing_interval || 'monthly',
-        amount: body.amount || 0,
-        status: 'trialing',
-      })
+    // Every new brand starts on a 1-week trial automatically — tracked
+    // record only, no processor. The plan/price can be set now or added
+    // later from the brand's page; the trial period starts either way so
+    // there's always a subscription record and a clear expiry to notify
+    // on, even before pricing is decided.
+    const trialStart = new Date()
+    const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const { error: subError } = await supabase.from('brand_subscriptions').insert({
+      brand_id: brand.id,
+      plan_name: body.plan_name || null,
+      billing_interval: body.billing_interval || 'monthly',
+      amount: body.amount || 0,
+      status: 'trialing',
+      current_period_start: trialStart.toISOString().slice(0, 10),
+      current_period_end: trialEnd.toISOString().slice(0, 10),
+    })
+    if (subError) {
+      console.error('[OWNER BRANDS API] Failed to create trial subscription (brand still created):', subError)
     }
 
     // Create the brand's first admin account. Isolated signUp so it

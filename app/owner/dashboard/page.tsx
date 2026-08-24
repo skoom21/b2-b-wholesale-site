@@ -12,6 +12,7 @@ import {
   Rocket,
   ChevronDown,
   ChevronUp,
+  BellRing,
 } from "lucide-react"
 import { fetchBrands, type Brand } from "@/lib/api-client"
 import { getCurrentUser } from "@/lib/auth"
@@ -20,6 +21,27 @@ type Insight = {
   title: string
   description: string
   tone: "action" | "good"
+}
+
+type ExpiryAlert = {
+  brandId: string
+  brandName: string
+  status: string
+  daysLeft: number
+}
+
+function getExpiryAlerts(brands: Brand[]): ExpiryAlert[] {
+  const alerts: ExpiryAlert[] = []
+  for (const b of brands) {
+    const sub = b.brand_subscriptions?.[0]
+    if (!sub || !sub.current_period_end) continue
+    if (sub.status !== "trialing" && sub.status !== "active") continue
+    const daysLeft = Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    if (daysLeft <= 3) {
+      alerts.push({ brandId: b.id, brandName: b.name, status: sub.status, daysLeft })
+    }
+  }
+  return alerts.sort((a, b) => a.daysLeft - b.daysLeft)
 }
 
 function generateInsights(brands: Brand[]): Insight[] {
@@ -167,6 +189,7 @@ export default function OwnerDashboard() {
     return sum + (sub.billing_interval === "yearly" ? sub.amount / 12 : sub.amount)
   }, 0)
   const insights = generateInsights(brands)
+  const expiryAlerts = getExpiryAlerts(brands)
   const firstName = ownerName.split(" ")[0]
 
   return (
@@ -182,6 +205,33 @@ export default function OwnerDashboard() {
           Manage Brands
         </Link>
       </div>
+
+      {expiryAlerts.length > 0 && (
+        <div className="rounded-2xl border-l-4 border-l-destructive bg-destructive/5 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <BellRing size={18} className="text-destructive" />
+            <h2 className="text-base font-bold text-secondary">Subscription Alerts</h2>
+          </div>
+          <div className="space-y-2">
+            {expiryAlerts.map((a) => (
+              <Link
+                key={a.brandId}
+                href={`/owner/brands/${a.brandId}`}
+                className="flex items-center justify-between text-sm p-2 -mx-2 rounded-lg hover:bg-destructive/10 transition-colors"
+              >
+                <span className="text-foreground font-medium">{a.brandName}</span>
+                <span className={a.daysLeft < 0 ? "text-destructive font-semibold" : "text-amber-600 font-semibold"}>
+                  {a.daysLeft < 0
+                    ? `${a.status === "trialing" ? "Trial ended" : "Expired"} ${Math.abs(a.daysLeft)}d ago`
+                    : a.daysLeft === 0
+                    ? `${a.status === "trialing" ? "Trial ends" : "Renews"} today`
+                    : `${a.status === "trialing" ? "Trial ends" : "Renews"} in ${a.daysLeft}d`}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">

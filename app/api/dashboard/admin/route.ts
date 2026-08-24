@@ -4,14 +4,20 @@ import { apiSuccess, apiError } from '@/lib/api/response'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin()
+    const profile = await requireAdmin()
     const supabase = await createServerSupabaseClient()
-    
+
+    // Every query below is explicitly brand-scoped rather than relying
+    // solely on RLS — this route was previously unscoped and leaked every
+    // brand's aggregate stats (revenue, orders, stores) to every admin,
+    // regardless of which brand they belonged to.
+
     // Get total stores count by status
     const { data: stores } = await supabase
       .from('stores')
       .select('id, status, tier')
-    
+      .eq('brand_id', profile.brand_id)
+
     const totalStores = stores?.length || 0
     const activeStores = stores?.filter(s => s.status === 'active').length || 0
     const pendingStores = stores?.filter(s => s.status === 'pending').length || 0
@@ -26,7 +32,8 @@ export async function GET(request: NextRequest) {
     const { data: orders } = await supabase
       .from('orders')
       .select('id, status, total_amount, order_date')
-    
+      .eq('brand_id', profile.brand_id)
+
     const totalOrders = orders?.length || 0
     const pendingOrders = orders?.filter(o => o.status === 'pending').length || 0
     const processingOrders = orders?.filter(o => o.status === 'processing' || o.status === 'confirmed').length || 0
@@ -56,23 +63,26 @@ export async function GET(request: NextRequest) {
           name
         )
       `)
+      .eq('brand_id', profile.brand_id)
       .order('order_date', { ascending: false })
       .limit(10)
-    
+
     // Get low stock products
     const { data: lowStockProducts } = await supabase
       .from('products')
       .select('id, name, sku, stock_quantity, low_stock_threshold, stock_status')
+      .eq('brand_id', profile.brand_id)
       .in('stock_status', ['low_stock', 'out_of_stock'])
       .eq('is_active', true)
       .order('stock_quantity', { ascending: true })
       .limit(15)
-    
+
     // Get product statistics
     const { data: products } = await supabase
       .from('products')
       .select('id, stock_status, is_active')
-    
+      .eq('brand_id', profile.brand_id)
+
     const totalProducts = products?.length || 0
     const activeProducts = products?.filter(p => p.is_active).length || 0
     const outOfStock = products?.filter(p => p.stock_status === 'out_of_stock').length || 0
@@ -81,11 +91,13 @@ export async function GET(request: NextRequest) {
     const { data: pendingStoresList } = await supabase
       .from('stores')
       .select('id, name, email, city, store_type, created_at')
+      .eq('brand_id', profile.brand_id)
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
       .limit(10)
-    
-    // Get overdue invoices
+
+    // Get overdue invoices. invoices has no brand_id column of its own —
+    // scoped transitively via stores, matching the RLS policy's own idiom.
     const { data: overdueInvoices } = await supabase
       .from('invoices')
       .select(`
@@ -93,11 +105,13 @@ export async function GET(request: NextRequest) {
         invoice_number,
         total_amount,
         due_date,
-        stores (
+        stores!inner (
           id,
-          name
+          name,
+          brand_id
         )
       `)
+      .eq('stores.brand_id', profile.brand_id)
       .eq('status', 'overdue')
       .order('due_date', { ascending: true })
       .limit(10)

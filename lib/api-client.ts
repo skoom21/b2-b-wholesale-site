@@ -282,6 +282,18 @@ export async function fetchStorePayments(storeId: string) {
   return apiClient<{ payments: any[] }>(`/api/stores/${storeId}/payments`)
 }
 
+export async function fetchMySubscription() {
+  return apiClient<{ subscription: {
+    id: string
+    plan_name: string | null
+    billing_interval: 'monthly' | 'yearly'
+    amount: number
+    status: 'trialing' | 'active' | 'past_due' | 'cancelled'
+    current_period_start: string
+    current_period_end: string
+  } | null }>('/api/admin/subscription')
+}
+
 // Credit Requests API
 export type CreditRequest = {
   id: string

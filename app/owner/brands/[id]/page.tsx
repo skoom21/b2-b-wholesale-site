@@ -23,6 +23,11 @@ export default function OwnerBrandDetailPage() {
   const [adminFormError, setAdminFormError] = useState<string | null>(null)
   const [createdAdminAccount, setCreatedAdminAccount] = useState<{ email: string; temp_password: string } | null>(null)
 
+  const [editingSub, setEditingSub] = useState(false)
+  const [subDraft, setSubDraft] = useState({ plan_name: "", billing_interval: "monthly", amount: "", status: "trialing" })
+  const [savingSub, setSavingSub] = useState(false)
+  const [subError, setSubError] = useState<string | null>(null)
+
   const load = async () => {
     try {
       setLoading(true)
@@ -68,6 +73,48 @@ export default function OwnerBrandDetailPage() {
   useEffect(() => {
     load()
   }, [id])
+
+  const startEditingSub = () => {
+    const sub = brand?.brand_subscriptions?.[0]
+    setSubDraft({
+      plan_name: sub?.plan_name || "",
+      billing_interval: sub?.billing_interval || "monthly",
+      amount: sub?.amount != null ? String(sub.amount) : "",
+      status: sub?.status || "trialing",
+    })
+    setSubError(null)
+    setEditingSub(true)
+  }
+
+  const saveSub = async () => {
+    if (!subDraft.plan_name.trim()) {
+      setSubError("Give the plan a name")
+      return
+    }
+    const amount = parseFloat(subDraft.amount)
+    if (isNaN(amount) || amount < 0) {
+      setSubError("Enter a valid price")
+      return
+    }
+    try {
+      setSavingSub(true)
+      setSubError(null)
+      await updateBrand(id, {
+        subscription: {
+          plan_name: subDraft.plan_name.trim(),
+          billing_interval: subDraft.billing_interval as any,
+          amount,
+          status: subDraft.status as any,
+        },
+      })
+      setEditingSub(false)
+      await load()
+    } catch (err: any) {
+      setSubError(err.message || "Failed to save plan")
+    } finally {
+      setSavingSub(false)
+    }
+  }
 
   const handleStatusChange = async (status: "active" | "suspended" | "cancelled") => {
     try {
@@ -150,27 +197,111 @@ export default function OwnerBrandDetailPage() {
       </div>
 
       <div className="card">
-        <h2 className="text-xl font-bold text-secondary mb-4">Subscription</h2>
-        {subscription ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground text-xs uppercase font-bold">Plan</p>
-              <p className="font-medium">{subscription.plan_name}</p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-secondary">Subscription</h2>
+          {!editingSub && (
+            <button onClick={startEditingSub} className="text-sm font-semibold text-primary hover:underline">
+              {subscription ? "Edit Plan" : "Set Plan"}
+            </button>
+          )}
+        </div>
+
+        {editingSub ? (
+          <div className="space-y-3">
+            {subError && <p className="text-xs text-destructive">{subError}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Plan Name</label>
+                <input
+                  type="text"
+                  value={subDraft.plan_name}
+                  onChange={(e) => setSubDraft({ ...subDraft, plan_name: e.target.value })}
+                  placeholder="e.g. Standard"
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={subDraft.amount}
+                  onChange={(e) => setSubDraft({ ...subDraft, amount: e.target.value })}
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Billing Interval</label>
+                <select
+                  value={subDraft.billing_interval}
+                  onChange={(e) => setSubDraft({ ...subDraft, billing_interval: e.target.value })}
+                  className="input w-full"
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">Status</label>
+                <select
+                  value={subDraft.status}
+                  onChange={(e) => setSubDraft({ ...subDraft, status: e.target.value })}
+                  className="input w-full"
+                >
+                  <option value="trialing">Trialing</option>
+                  <option value="active">Active</option>
+                  <option value="past_due">Past Due</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <p className="text-muted-foreground text-xs uppercase font-bold">Amount</p>
-              <p className="font-medium">${subscription.amount} / {subscription.billing_interval}</p>
+            <div className="flex gap-2">
+              <button onClick={saveSub} disabled={savingSub} className="btn-primary px-4 py-2 text-sm disabled:opacity-50">
+                {savingSub ? "Saving..." : "Save Plan"}
+              </button>
+              <button onClick={() => setEditingSub(false)} className="btn-ghost px-4 py-2 text-sm">Cancel</button>
             </div>
-            <div>
-              <p className="text-muted-foreground text-xs uppercase font-bold">Status</p>
-              <span className={`status-badge ${subscription.status === "active" ? "status-green" : "status-yellow"}`}>
-                {subscription.status}
-              </span>
+          </div>
+        ) : subscription ? (
+          <div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs uppercase font-bold">Plan</p>
+                <p className="font-medium">{subscription.plan_name || "No plan set"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs uppercase font-bold">Amount</p>
+                <p className="font-medium">${subscription.amount} / {subscription.billing_interval}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs uppercase font-bold">Status</p>
+                <span className={`status-badge ${subscription.status === "active" ? "status-green" : subscription.status === "trialing" ? "status-blue" : "status-red"}`}>
+                  {subscription.status}
+                </span>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs uppercase font-bold">
+                  {subscription.status === "trialing" ? "Trial Ends" : "Renews"}
+                </p>
+                <p className="font-medium">{new Date(subscription.current_period_end).toLocaleDateString()}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-muted-foreground text-xs uppercase font-bold">Renews</p>
-              <p className="font-medium">{new Date(subscription.current_period_end).toLocaleDateString()}</p>
-            </div>
+            {(() => {
+              const daysLeft = Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+              if (subscription.status === "cancelled") return null
+              if (daysLeft < 0) {
+                return <p className="text-sm text-destructive font-semibold mt-4">
+                  {subscription.status === "trialing" ? "Trial ended" : "Subscription expired"} {Math.abs(daysLeft)} day{Math.abs(daysLeft) === 1 ? "" : "s"} ago.
+                </p>
+              }
+              if (daysLeft <= 3) {
+                return <p className="text-sm text-amber-600 font-semibold mt-4">
+                  {subscription.status === "trialing" ? "Trial ends" : "Renews"} in {daysLeft} day{daysLeft === 1 ? "" : "s"}.
+                </p>
+              }
+              return null
+            })()}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">No subscription record set for this brand yet.</p>

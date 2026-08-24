@@ -16,13 +16,14 @@ import {
   Pie,
   Cell,
 } from "recharts"
-import { TrendingUp, Users, Package, DollarSign, AlertCircle } from "lucide-react"
-import { fetchAdminDashboardData } from "@/lib/api-client"
+import { TrendingUp, Users, Package, DollarSign, AlertCircle, BellRing, Repeat } from "lucide-react"
+import { fetchAdminDashboardData, fetchMySubscription } from "@/lib/api-client"
 
 export default function AdminDashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [subscription, setSubscription] = useState<any>(null)
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -38,6 +39,7 @@ export default function AdminDashboard() {
     }
 
     loadDashboard()
+    fetchMySubscription().then((d) => setSubscription(d.subscription)).catch(() => {})
   }, [])
 
   if (loading) {
@@ -101,6 +103,37 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold text-secondary">Admin Dashboard</h1>
         <p className="text-muted-foreground">Overview of platform operations and sales metrics</p>
       </div>
+
+      {subscription && (() => {
+        const daysLeft = Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        const isTrial = subscription.status === "trialing"
+        const showAlert = subscription.status !== "cancelled" && daysLeft <= 3
+
+        return (
+          <div className={`card ${showAlert ? "border-l-4 border-l-destructive bg-destructive/5" : ""}`}>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                {showAlert ? <BellRing size={18} className="text-destructive shrink-0" /> : <Repeat size={18} className="text-muted-foreground shrink-0" />}
+                <div>
+                  <p className="text-sm font-semibold text-secondary">
+                    {subscription.plan_name || "Your plan"} — <span className="capitalize">{subscription.status.replace('_', ' ')}</span>
+                    {subscription.amount > 0 && ` · $${subscription.amount}/${subscription.billing_interval}`}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${showAlert ? (daysLeft < 0 ? "text-destructive font-medium" : "text-amber-600 font-medium") : "text-muted-foreground"}`}>
+                    {daysLeft < 0
+                      ? `${isTrial ? "Your trial ended" : "Your subscription expired"} ${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? "" : "s"} ago — contact your platform admin to keep your account active.`
+                      : daysLeft === 0
+                      ? `${isTrial ? "Your trial ends" : "Renews"} today.`
+                      : daysLeft <= 3
+                      ? `${isTrial ? "Your trial ends" : "Renews"} in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`
+                      : `${isTrial ? "Trial ends" : "Renews"} ${new Date(subscription.current_period_end).toLocaleDateString()}.`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
