@@ -90,6 +90,9 @@ export async function PATCH(
     if (body.contact_email !== undefined) updateData.contact_email = body.contact_email
     if (body.contact_phone !== undefined) updateData.contact_phone = body.contact_phone
     if (body.notes !== undefined) updateData.notes = body.notes
+    if (body.public_catalog_enabled !== undefined) updateData.public_catalog_enabled = Boolean(body.public_catalog_enabled)
+    if (body.public_description !== undefined) updateData.public_description = body.public_description || null
+    if (body.logo_url !== undefined) updateData.logo_url = body.logo_url || null
 
     if (Object.keys(updateData).length > 0) {
       const { error } = await supabase.from('brands').update(updateData).eq('id', id)

@@ -303,6 +303,9 @@ export type CreditRequest = {
   balance_after: number
   transaction_type: 'credit_request_pending' | 'credit_request_approved' | 'credit_request_rejected'
   notes: string | null
+  public_catalog_enabled?: boolean
+  public_description?: string | null
+  logo_url?: string | null
   created_at: string
   stores?: { id: string; name: string; email: string; credit_limit: number }
 }

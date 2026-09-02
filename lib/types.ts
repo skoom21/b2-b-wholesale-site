@@ -1,4 +1,4 @@
-// Teetoz B2B Wholesale Platform - Database Types
+// Pallet multi-tenant wholesale platform — database types
 // Auto-generated TypeScript types for Supabase database
 
 // =====================================================

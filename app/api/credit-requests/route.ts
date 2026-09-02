@@ -9,11 +9,20 @@ export async function GET(request: NextRequest) {
     const role = getUserRole(user)
 
     if (role === 'admin' || role === 'staff' || role === 'owner') {
-      const { data, error } = await supabase
+      // store_credit_history has no brand_id of its own — admin/staff are
+      // scoped transitively via an inner join to their own brand's stores.
+      // Owner intentionally sees everything (no filter).
+      let query = supabase
         .from('store_credit_history')
-        .select('id, store_id, amount, balance_before, balance_after, transaction_type, notes, created_at, stores(id, name, email, credit_limit)')
+        .select('id, store_id, amount, balance_before, balance_after, transaction_type, notes, created_at, stores!inner(id, name, email, credit_limit, brand_id)')
         .in('transaction_type', ['credit_request_pending', 'credit_request_approved', 'credit_request_rejected'])
         .order('created_at', { ascending: false })
+
+      if (role !== 'owner') {
+        query = query.eq('stores.brand_id', (user as any).brand_id)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         return apiError('Failed to fetch credit requests', 'DATABASE_ERROR', 500, error)

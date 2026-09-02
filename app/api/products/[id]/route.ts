@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient, getAuthUser, getUserRole, requireAdmin } from '@/lib/api/auth'
+import { createServerSupabaseClient, getCurrentUserProfile, requireAdmin } from '@/lib/api/auth'
 import { apiSuccess, apiError, apiNotFound, apiValidationError, apiBadRequest } from '@/lib/api/response'
 
 export async function GET(
@@ -9,9 +9,14 @@ export async function GET(
   try {
     const { id } = await params
     const supabase = await createServerSupabaseClient()
-    const user = await getAuthUser()
-    
-    // Fetch product with category information
+    const profile = await getCurrentUserProfile()
+
+    if (!profile || !profile.brand_id) {
+      return apiError('Unauthorized', 'UNAUTHORIZED', 401)
+    }
+
+    // Fetch product with category information — scoped to the caller's
+    // own brand so one brand can never view another brand's catalog by ID.
     const { data: product, error } = await supabase
       .from('products')
       .select(`
@@ -24,26 +29,24 @@ export async function GET(
         )
       `)
       .eq('id', id)
+      .eq('brand_id', profile.brand_id)
       .single()
-    
+
     if (error || !product) {
       return apiNotFound('Product not found')
     }
-    
+
     // Get user's store tier for pricing
     let userTier: 'gold' | 'silver' | 'standard' = 'standard'
-    if (user) {
-      const role = getUserRole(user)
-      if (role === 'retailer') {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('tier')
-          .eq('user_id', user.id)
-          .single()
-        
-        if (store) {
-          userTier = store.tier
-        }
+    if (profile.role === 'retailer') {
+      const { data: store } = await supabase
+        .from('stores')
+        .select('tier')
+        .eq('user_id', profile.id)
+        .single()
+
+      if (store) {
+        userTier = store.tier
       }
     }
     
@@ -72,33 +75,38 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    await requireAdmin()
+    const admin = await requireAdmin()
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
-    
-    // Check if product exists
+
+    // Check the product exists AND belongs to the admin's own brand —
+    // without the brand_id check here, any admin could edit any other
+    // brand's product by ID.
     const { data: existingProduct, error: fetchError } = await supabase
       .from('products')
       .select('*')
       .eq('id', id)
+      .eq('brand_id', admin.brand_id)
       .single()
-    
+
     if (fetchError || !existingProduct) {
       return apiNotFound('Product not found')
     }
-    
+
     // Prepare update data
     const updateData: any = {}
-    
-    // If SKU is being updated, check for duplicates
+
+    // If SKU is being updated, check for duplicates within the same brand
+    // (SKUs aren't required to be globally unique across brands)
     if (body.sku && body.sku !== existingProduct.sku) {
       const { data: duplicateProduct } = await supabase
         .from('products')
         .select('id')
         .eq('sku', body.sku)
+        .eq('brand_id', admin.brand_id)
         .neq('id', id)
         .single()
-      
+
       if (duplicateProduct) {
         return apiValidationError([{
           field: 'sku',
@@ -107,15 +115,17 @@ export async function PUT(
       }
       updateData.sku = body.sku
     }
-    
-    // Validate category if provided
+
+    // Validate category belongs to the same brand — without this an
+    // admin could reassign a product into another brand's category.
     if (body.category_id) {
       const { data: category } = await supabase
         .from('categories')
         .select('id')
         .eq('id', body.category_id)
+        .eq('brand_id', admin.brand_id)
         .single()
-      
+
       if (!category) {
         return apiValidationError([{
           field: 'category_id',
@@ -219,6 +229,7 @@ export async function PUT(
       .from('products')
       .update(updateData)
       .eq('id', id)
+      .eq('brand_id', admin.brand_id)
       .select()
       .single()
     
@@ -244,36 +255,38 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    await requireAdmin()
+    const admin = await requireAdmin()
     const supabase = await createServerSupabaseClient()
-    
-    // Check if product exists
+
+    // Check the product exists AND belongs to the admin's own brand.
     const { data: existingProduct, error: fetchError } = await supabase
       .from('products')
       .select('id')
       .eq('id', id)
+      .eq('brand_id', admin.brand_id)
       .single()
-    
+
     if (fetchError || !existingProduct) {
       return apiNotFound('Product not found')
     }
-    
+
     // Check for dependencies (optional, but good practice)
     // For example, check if product is in any active orders
     const { count: orderCount } = await supabase
       .from('order_items')
       .select('*', { count: 'exact', head: true })
       .eq('product_id', id)
-      
+
     if (orderCount && orderCount > 0) {
       return apiBadRequest('Cannot delete product because it has associated orders. Archive it instead.')
     }
-    
+
     // Delete product
     const { error } = await supabase
       .from('products')
       .delete()
       .eq('id', id)
+      .eq('brand_id', admin.brand_id)
     
     if (error) {
       throw error

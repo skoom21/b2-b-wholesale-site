@@ -166,11 +166,13 @@ export async function POST(request: NextRequest) {
         continue
       }
       
-      // Fetch product details
+      // Fetch product details — scoped to the ordering store's own brand,
+      // so a request can't pull in another brand's product/price by ID.
       const { data: product, error: productError } = await supabase
         .from('products')
         .select('id, sku, name, unit, base_price, gold_price, silver_price, stock_quantity, stock_status, is_active')
         .eq('id', item.product_id)
+        .eq('brand_id', profile.brand_id)
         .single()
       
       if (productError || !product) {
@@ -345,23 +347,64 @@ export async function POST(request: NextRequest) {
     // Auto-generate an invoice so the retailer immediately sees this order
     // as a due/balance owed (orders are post-paid, not blocked by credit limit).
     // Best-effort: never fails order placement if this insert doesn't go through.
+    //
+    // generate_invoice_number() (a DB trigger, fired when invoice_number is
+    // left NULL) derives the number from a plain COUNT(*) of this month's
+    // invoices — not race-safe, and worse than the equivalent order_number
+    // issue: a failed insert doesn't add a row, so the count never advances
+    // and every retry recomputes the exact same colliding number, failing
+    // forever until someone manually intervenes. Generating the number here
+    // and retrying with a bumped suffix on collision (same fix already
+    // applied to order_number above) actually resolves it.
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 30)
-    const { error: invoiceError } = await supabase
-      .from('invoices')
-      .insert({
-        order_id: order.id,
-        store_id: store.id,
-        status: 'sent',
-        subtotal,
-        tax_amount: taxAmount,
-        total_amount: totalAmount,
-        amount_paid: 0,
-        invoice_date: new Date().toISOString().slice(0, 10),
-        due_date: dueDate.toISOString().slice(0, 10),
-      })
-    if (invoiceError) {
-      console.error('[ORDERS API] Failed to auto-create invoice (order still succeeds):', invoiceError)
+    const { data: invoiceNumberResult, error: invoiceNumberError } = await supabase
+      .rpc('generate_invoice_number')
+
+    if (invoiceNumberError) {
+      console.error('[ORDERS API] Failed to generate invoice number (order still succeeds):', invoiceNumberError)
+    } else {
+      let invoiceNumber: string = invoiceNumberResult
+      let invoiceError: any = null
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const result = await supabase
+          .from('invoices')
+          .insert({
+            invoice_number: invoiceNumber,
+            order_id: order.id,
+            store_id: store.id,
+            status: 'sent',
+            subtotal,
+            tax_amount: taxAmount,
+            total_amount: totalAmount,
+            amount_paid: 0,
+            invoice_date: new Date().toISOString().slice(0, 10),
+            due_date: dueDate.toISOString().slice(0, 10),
+          })
+
+        if (!result.error) {
+          invoiceError = null
+          break
+        }
+
+        if (result.error.code === '23505' && result.error.message?.includes('invoice_number')) {
+          console.warn(`[ORDERS API] invoice_number collision on ${invoiceNumber}, retrying with next number`)
+          invoiceError = result.error
+          const match = invoiceNumber.match(/-(\d+)$/)
+          invoiceNumber = match
+            ? invoiceNumber.replace(/-(\d+)$/, `-${(parseInt(match[1], 10) + 1).toString().padStart(match[1].length, '0')}`)
+            : `${invoiceNumber}-${Date.now().toString().slice(-4)}`
+          continue
+        }
+
+        invoiceError = result.error
+        break
+      }
+
+      if (invoiceError) {
+        console.error('[ORDERS API] Failed to auto-create invoice (order still succeeds):', invoiceError)
+      }
     }
 
     // Fetch complete order with items

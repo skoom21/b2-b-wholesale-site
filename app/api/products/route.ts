@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createServerSupabaseClient, requireBrandContext, requireAdmin } from '@/lib/api/auth'
-import { apiSuccess, apiError, apiBadRequest, apiValidationError } from '@/lib/api/response'
+import { apiSuccess, apiError, apiBadRequest, apiValidationError, apiNotFound } from '@/lib/api/response'
 import { parsePagination, calculatePagination, getPaginationRange } from '@/lib/api/pagination'
 
 export async function GET(request: NextRequest) {
@@ -123,6 +123,10 @@ export async function GET(request: NextRequest) {
     
   } catch (error: any) {
     console.error('[PRODUCTS API] Error:', error)
+    if (error.message === 'Unauthorized' || error.message.includes('Forbidden')) {
+      return apiError(error.message, error.message.includes('Forbidden') ? 'FORBIDDEN' : 'UNAUTHORIZED',
+        error.message.includes('Forbidden') ? 403 : 401)
+    }
     return apiError(error.message || 'Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
@@ -286,14 +290,27 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
-    
+
     if (!body.ids || !Array.isArray(body.ids) || body.ids.length === 0) {
       return apiBadRequest('Product IDs array is required')
     }
-    
+
+    // Restrict the delete set to products that actually belong to the
+    // admin's own brand — without this, passing another brand's product
+    // IDs would delete them too.
+    const { data: ownProducts } = await supabase
+      .from('products')
+      .select('id')
+      .in('id', body.ids)
+      .eq('brand_id', admin.brand_id)
+    body.ids = (ownProducts || []).map(p => p.id)
+    if (body.ids.length === 0) {
+      return apiNotFound('No matching products found')
+    }
+
     // Check if any products are referenced in orders
     const { data: orderItems, error: orderCheckError } = await supabase
       .from('order_items')
@@ -318,6 +335,7 @@ export async function DELETE(request: NextRequest) {
       .from('products')
       .delete()
       .in('id', body.ids)
+      .eq('brand_id', admin.brand_id)
     
     if (deleteError) {
       throw deleteError

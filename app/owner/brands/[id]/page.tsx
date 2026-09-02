@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { AlertCircle, Building2, Package, ShoppingCart, Store, Users } from "lucide-react"
+import Link from "next/link"
+import { AlertCircle, Building2, ExternalLink, Package, ShoppingCart, Store, Users } from "lucide-react"
 import { fetchBrand, updateBrand, sendBrandAdminPasswordReset, createBrandAdmin, type Brand } from "@/lib/api-client"
 
 export default function OwnerBrandDetailPage() {
@@ -161,9 +162,14 @@ export default function OwnerBrandDetailPage() {
             <p className="text-muted-foreground">{brand.slug}</p>
           </div>
         </div>
-        <span className={`status-badge ${brand.status === "active" ? "status-green" : "status-red"}`}>
-          {brand.status}
-        </span>
+        <div className="flex items-center gap-3">
+          <Link href={`/brands/${brand.slug}`} target="_blank" className="btn-secondary inline-flex items-center gap-2">
+            Public storefront <ExternalLink size={15} />
+          </Link>
+          <span className={`status-badge ${brand.status === "active" ? "status-green" : "status-red"}`}>
+            {brand.status}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

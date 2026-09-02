@@ -1,47 +1,54 @@
 import { NextRequest } from 'next/server'
 import { createServerSupabaseClient, requireAuth, getUserRole } from '@/lib/api/auth'
 import { apiSuccess, apiError, apiValidationError } from '@/lib/api/response'
-import { parsePagination, calculatePagination } from '@/lib/api/pagination'
+import { parsePagination, calculatePagination, getPaginationRange } from '@/lib/api/pagination'
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
     const supabase = await createServerSupabaseClient()
     const role = getUserRole(user)
-    
+
     const { searchParams } = new URL(request.url)
-    const { page, limit, offset } = parsePagination(searchParams)
+    const { page, perPage } = parsePagination(searchParams)
+    const { from, to } = getPaginationRange(page, perPage)
     
     // Extract filters
     const status = searchParams.get('status')
     const storeId = searchParams.get('store_id')
     
-    // Build query
+    // Build query. invoices has no brand_id of its own, so admin/staff
+    // are scoped transitively via an inner join to their own brand's
+    // stores — without this, any admin could list every brand's invoices.
     let query = supabase
       .from('invoices')
       .select(`
         *,
-        stores (
+        stores!inner (
           id,
           name,
           email,
-          tier
+          tier,
+          brand_id
         )
       `, { count: 'exact' })
-    
-    // Apply RLS for retailers
+
     if (role === 'retailer') {
       const { data: store } = await supabase
         .from('stores')
         .select('id')
         .eq('user_id', user.id)
         .single()
-      
+
       if (store) {
         query = query.eq('store_id', store.id)
       }
-    } else if (storeId && (role === 'admin' || role === 'staff' || role === 'owner')) {
-      // Admin/staff/owner can filter by store
+    } else if (role === 'admin' || role === 'staff') {
+      query = query.eq('stores.brand_id', user.brand_id)
+      if (storeId) {
+        query = query.eq('store_id', storeId)
+      }
+    } else if (storeId && role === 'owner') {
       query = query.eq('store_id', storeId)
     }
     
@@ -53,13 +60,13 @@ export async function GET(request: NextRequest) {
     // Apply pagination and sorting
     const { data: invoices, error, count } = await query
       .order('due_date', { ascending: false })
-      .range(offset, offset + limit - 1)
-    
+      .range(from, to)
+
     if (error) {
       throw error
     }
-    
-    const pagination = calculatePagination(count || 0, page, limit)
+
+    const pagination = calculatePagination(count || 0, page, perPage)
     
     return apiSuccess({ invoices, pagination })
     
@@ -95,13 +102,17 @@ export async function POST(request: NextRequest) {
       }])
     }
     
-    // Fetch order details
-    const { data: order, error: orderError } = await supabase
+    // Fetch order details — scoped to the caller's own brand (owner
+    // excepted), so an admin can't invoice another brand's order.
+    let orderQuery = supabase
       .from('orders')
       .select('*, stores(payment_terms_days)')
       .eq('id', body.order_id)
-      .single()
-    
+    if (role !== 'owner') {
+      orderQuery = orderQuery.eq('brand_id', user.brand_id)
+    }
+    const { data: order, error: orderError } = await orderQuery.single()
+
     if (orderError || !order) {
       return apiValidationError([{
         field: 'order_id',

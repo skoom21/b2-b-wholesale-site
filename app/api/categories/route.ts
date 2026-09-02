@@ -98,6 +98,10 @@ export async function GET(request: NextRequest) {
     
   } catch (error: any) {
     console.error('[CATEGORIES API] Error:', error)
+    if (error.message === 'Unauthorized' || error.message.includes('Forbidden')) {
+      return apiError(error.message, error.message.includes('Forbidden') ? 'FORBIDDEN' : 'UNAUTHORIZED',
+        error.message.includes('Forbidden') ? 403 : 401)
+    }
     return apiError(error.message || 'Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

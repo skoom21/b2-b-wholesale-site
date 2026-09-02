@@ -19,11 +19,18 @@ export async function PATCH(
 
     const { data: creditRequest, error: fetchError } = await supabase
       .from('store_credit_history')
-      .select('id, store_id, balance_after, transaction_type')
+      .select('id, store_id, balance_after, transaction_type, stores!inner(brand_id)')
       .eq('id', id)
       .single()
 
     if (fetchError || !creditRequest) {
+      return apiNotFound('Credit request not found')
+    }
+
+    // store_credit_history has no brand_id of its own — without this
+    // check, any admin could approve/reject (and change the credit limit
+    // on) another brand's store via this ID.
+    if (admin.role !== 'owner' && (creditRequest.stores as any)?.brand_id !== admin.brand_id) {
       return apiNotFound('Credit request not found')
     }
 

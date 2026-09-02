@@ -25,7 +25,8 @@ export async function GET(
           city,
           province,
           postal_code,
-          tier
+          tier,
+          brand_id
         ),
         orders (
           id,
@@ -36,24 +37,31 @@ export async function GET(
       `)
       .eq('id', id)
       .single()
-    
+
     if (error || !invoice) {
       return apiNotFound('Invoice not found')
     }
-    
-    // RLS: Check if retailer owns this invoice
+
+    // Check if retailer owns this invoice
     if (role === 'retailer') {
       const { data: store } = await supabase
         .from('stores')
         .select('id')
         .eq('user_id', user.id)
         .single()
-      
+
       if (!store || invoice.store_id !== store.id) {
         return apiForbidden('Access denied to this invoice')
       }
+    } else if (role === 'admin' || role === 'staff') {
+      // Invoices have no brand_id of their own — scoped transitively via
+      // the store. Without this check, any admin could fetch any other
+      // brand's invoice by ID.
+      if ((invoice.stores as any)?.brand_id !== user.brand_id) {
+        return apiForbidden('Access denied to this invoice')
+      }
     }
-    
+
     return apiSuccess({ invoice })
     
   } catch (error: any) {
@@ -81,17 +89,21 @@ export async function PATCH(
       return apiForbidden('Only administrators can update invoices')
     }
     
-    // Fetch existing invoice
-    const { data: invoice, error: fetchError } = await supabase
+    // Fetch existing invoice, scoped transitively via its store's brand —
+    // owner can update any brand's invoices, admin/staff only their own.
+    let invoiceQuery = supabase
       .from('invoices')
-      .select('*')
+      .select('*, stores!inner(brand_id)')
       .eq('id', id)
-      .single()
-    
+    if (role !== 'owner') {
+      invoiceQuery = invoiceQuery.eq('stores.brand_id', user.brand_id)
+    }
+    const { data: invoice, error: fetchError } = await invoiceQuery.single()
+
     if (fetchError || !invoice) {
       return apiNotFound('Invoice not found')
     }
-    
+
     const updateData: any = {}
     
     // Handle payment

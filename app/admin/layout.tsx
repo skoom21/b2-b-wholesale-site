@@ -63,6 +63,7 @@ export default function AdminLayout({ children }) {
     { label: "Staff", href: "/admin/staff" },
     { label: "Payroll", href: "/admin/payroll" },
     { label: "Reports", href: "/admin/reports" },
+    { label: "AI Planner", href: "/admin/ai-planner" },
   ]
 
   if (loading) {

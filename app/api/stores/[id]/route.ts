@@ -9,6 +9,9 @@ export async function GET(
   try {
     const { id } = await params
     const profile = await getCurrentUserProfile()
+    if (!profile) {
+      return apiError('Unauthorized', 'UNAUTHORIZED', 401)
+    }
     const supabase = await createServerSupabaseClient()
 
     const { data: store, error } = await supabase
@@ -21,14 +24,14 @@ export async function GET(
       return apiNotFound('Store not found')
     }
 
-    // RLS check for retailers
-    if (profile) {
-      const isOwner = profile.role === 'owner'
-      const isAdmin = (profile.role === 'admin' || profile.role === 'staff') && profile.brand_id === store.brand_id
+    // Without this check (previously only run `if (profile)` — meaning
+    // an unauthenticated request skipped authorization entirely and
+    // could read any store's full record, including credit/contact info)
+    const isOwner = profile.role === 'owner'
+    const isAdmin = (profile.role === 'admin' || profile.role === 'staff') && profile.brand_id === store.brand_id
 
-      if (!isOwner && !isAdmin && store.user_id !== profile.id) {
-        return apiForbidden('You can only access your own store')
-      }
+    if (!isOwner && !isAdmin && store.user_id !== profile.id) {
+      return apiForbidden('You can only access your own store')
     }
 
     return apiSuccess({ store })

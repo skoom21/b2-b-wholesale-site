@@ -53,7 +53,7 @@ export default function ReportsPage() {
     if (!data) return
 
     const lines: string[] = []
-    lines.push("Teetoz Financial Report")
+    lines.push("Pallet Financial Report")
     lines.push(`Generated,${new Date().toLocaleString()}`)
     lines.push("")
 
@@ -84,7 +84,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `teetoz-report-${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `pallet-report-${new Date().toISOString().slice(0, 10)}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

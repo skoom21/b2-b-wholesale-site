@@ -10,7 +10,7 @@ function monthKey(date: Date) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
     const supabase = await createServerSupabaseClient()
 
     const now = new Date()
@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select('id, total_amount, status, order_date, store_id, stores(store_type)')
+      .eq('brand_id', admin.brand_id)
       .gte('order_date', sixMonthsAgo.toISOString())
 
     if (ordersError) {
@@ -52,10 +53,13 @@ export async function GET(request: NextRequest) {
         revenueByType[type] = (revenueByType[type] || 0) + parseFloat(o.total_amount?.toString() || '0')
       })
 
-    // Order items joined with parent order date/status, for product analytics
+    // Order items joined with parent order date/status, for product
+    // analytics — order_items has no brand_id of its own, so it's scoped
+    // transitively through the (inner-joined) parent order's brand_id.
     const { data: items, error: itemsError } = await supabase
       .from('order_items')
-      .select('product_id, product_name, product_sku, quantity, subtotal, orders!inner(order_date, status)')
+      .select('product_id, product_name, product_sku, quantity, subtotal, orders!inner(order_date, status, brand_id)')
+      .eq('orders.brand_id', admin.brand_id)
       .gte('orders.order_date', sixMonthsAgo.toISOString())
 
     if (itemsError) {
@@ -93,6 +97,7 @@ export async function GET(request: NextRequest) {
     const { data: activeProducts } = await supabase
       .from('products')
       .select('id, name, sku, stock_quantity, stock_status')
+      .eq('brand_id', admin.brand_id)
       .eq('is_active', true)
 
     const soldProductIds = new Set(thisMonthAgg.map(p => p.product_id))

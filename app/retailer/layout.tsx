@@ -55,9 +55,12 @@ function RetailerLayoutContent({ children }) {
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-sm">
-                T
+                P
               </div>
-              <span className="font-semibold text-foreground text-base tracking-tight">Teetoz</span>
+              <div>
+                <span className="block font-semibold text-foreground text-base tracking-tight">Pallet</span>
+                {store?.name && <span className="block text-[10px] text-muted-foreground -mt-0.5">{store.name}</span>}
+              </div>
             </div>
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => (

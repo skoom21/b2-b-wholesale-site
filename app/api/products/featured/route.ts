@@ -1,13 +1,17 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient, getAuthUser, getUserRole } from '@/lib/api/auth'
+import { createServerSupabaseClient, getCurrentUserProfile } from '@/lib/api/auth'
 import { apiSuccess, apiError } from '@/lib/api/response'
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
-    const user = await getAuthUser()
-    
-    // Fetch featured products
+    const profile = await getCurrentUserProfile()
+
+    if (!profile || !profile.brand_id) {
+      return apiError('Unauthorized', 'UNAUTHORIZED', 401)
+    }
+
+    // Fetch featured products — scoped to the caller's own brand.
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -31,30 +35,28 @@ export async function GET(request: NextRequest) {
           slug
         )
       `)
+      .eq('brand_id', profile.brand_id)
       .eq('featured', true)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(12)
-    
+
     if (error) {
       console.error('[PRODUCTS API] Error fetching featured products:', error)
       return apiError('Failed to fetch featured products', 'DATABASE_ERROR', 500, error)
     }
-    
+
     // Get user's store tier for pricing
     let userTier: 'gold' | 'silver' | 'standard' = 'standard'
-    if (user) {
-      const role = getUserRole(user)
-      if (role === 'retailer') {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('tier')
-          .eq('user_id', user.id)
-          .single()
-        
-        if (store) {
-          userTier = store.tier
-        }
+    if (profile.role === 'retailer') {
+      const { data: store } = await supabase
+        .from('stores')
+        .select('tier')
+        .eq('user_id', profile.id)
+        .single()
+
+      if (store) {
+        userTier = store.tier
       }
     }
     

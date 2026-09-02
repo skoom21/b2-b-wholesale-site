@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createServerSupabaseClient, getAuthUser, getUserRole } from '@/lib/api/auth'
+import { createServerSupabaseClient, getCurrentUserProfile } from '@/lib/api/auth'
 import { apiSuccess, apiError, apiNotFound } from '@/lib/api/response'
 import { parsePagination, calculatePagination, getPaginationRange } from '@/lib/api/pagination'
 
@@ -10,25 +10,31 @@ export async function GET(
   try {
     const { id } = await params
     const supabase = await createServerSupabaseClient()
-    const user = await getAuthUser()
+    const profile = await getCurrentUserProfile()
     const searchParams = request.nextUrl.searchParams
-    
-    // Check if category exists
+
+    if (!profile || !profile.brand_id) {
+      return apiError('Unauthorized', 'UNAUTHORIZED', 401)
+    }
+
+    // Check the category exists AND belongs to the caller's own brand —
+    // without this, a category ID from any brand's catalog was browsable.
     const { data: category, error: categoryError } = await supabase
       .from('categories')
       .select('*')
       .eq('id', id)
+      .eq('brand_id', profile.brand_id)
       .single()
-    
+
     if (categoryError || !category) {
       return apiNotFound('Category not found')
     }
-    
+
     // Parse pagination
     const { page, perPage } = parsePagination(searchParams)
     const { from, to } = getPaginationRange(page, perPage)
-    
-    // Fetch products in this category (including subcategories)
+
+    // Fetch products in this category
     let query = supabase
       .from('products')
       .select(`
@@ -47,31 +53,29 @@ export async function GET(
         is_active
       `, { count: 'exact' })
       .eq('category_id', id)
+      .eq('brand_id', profile.brand_id)
       .eq('is_active', true)
       .order('name', { ascending: true })
       .range(from, to)
-    
+
     const { data: products, error: productsError, count } = await query
-    
+
     if (productsError) {
       console.error('[CATEGORIES API] Error fetching products:', productsError)
       return apiError('Failed to fetch products', 'DATABASE_ERROR', 500, productsError)
     }
-    
+
     // Get user's store tier for pricing
     let userTier: 'gold' | 'silver' | 'standard' = 'standard'
-    if (user) {
-      const role = getUserRole(user)
-      if (role === 'retailer') {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('tier')
-          .eq('user_id', user.id)
-          .single()
-        
-        if (store) {
-          userTier = store.tier
-        }
+    if (profile.role === 'retailer') {
+      const { data: store } = await supabase
+        .from('stores')
+        .select('tier')
+        .eq('user_id', profile.id)
+        .single()
+
+      if (store) {
+        userTier = store.tier
       }
     }
     

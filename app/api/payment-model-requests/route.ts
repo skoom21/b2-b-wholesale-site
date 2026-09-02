@@ -12,10 +12,19 @@ export async function GET(request: NextRequest) {
     const role = getUserRole(user)
 
     if (role === 'admin' || role === 'staff' || role === 'owner') {
-      const { data, error } = await supabase
+      // payment_model_requests has no brand_id of its own — admin/staff
+      // are scoped transitively via an inner join to their own brand's
+      // stores. Owner intentionally sees everything (no filter).
+      let query = supabase
         .from('payment_model_requests')
-        .select('*, stores(id, name, email, payment_model)')
+        .select('*, stores!inner(id, name, email, payment_model, brand_id)')
         .order('created_at', { ascending: false })
+
+      if (role !== 'owner') {
+        query = query.eq('stores.brand_id', (user as any).brand_id)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         return apiError('Failed to fetch payment model requests', 'DATABASE_ERROR', 500, error)

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     // Get user's store
     const { data: store, error: storeError } = await supabase
       .from('stores')
-      .select('id, name, tier, status, credit_limit, credit_used, payment_model, billing_frequency, next_billing_date')
+      .select('id, name, tier, status, credit_limit, credit_used, payment_model, billing_frequency, next_billing_date, brand_id')
       .eq('user_id', user.id)
       .single()
     
@@ -46,10 +46,11 @@ export async function GET(request: NextRequest) {
       .order('order_date', { ascending: false })
       .limit(5)
     
-    // Get low stock alerts (products user has ordered before that are now low stock)
+    // Get low stock alerts, scoped to the retailer's own brand.
     const { data: lowStockProducts } = await supabase
       .from('products')
       .select('id, name, sku, stock_quantity, low_stock_threshold')
+      .eq('brand_id', store.brand_id)
       .in('stock_status', ['low_stock', 'out_of_stock'])
       .eq('is_active', true)
       .limit(10)

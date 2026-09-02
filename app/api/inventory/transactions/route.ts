@@ -1,16 +1,17 @@
 import { NextRequest } from 'next/server'
 import { createServerSupabaseClient, requireAdmin } from '@/lib/api/auth'
 import { apiSuccess, apiError } from '@/lib/api/response'
-import { parsePagination, calculatePagination } from '@/lib/api/pagination'
+import { parsePagination, calculatePagination, getPaginationRange } from '@/lib/api/pagination'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
     const supabase = await createServerSupabaseClient()
-    
+
     const { searchParams } = new URL(request.url)
-    const { page, limit, offset } = parsePagination(searchParams)
-    
+    const { page, perPage } = parsePagination(searchParams)
+    const { from, to } = getPaginationRange(page, perPage)
+
     // Extract filters
     const productId = searchParams.get('product_id')
     const transactionType = searchParams.get('transaction_type')
@@ -18,20 +19,23 @@ export async function GET(request: NextRequest) {
     const referenceId = searchParams.get('reference_id')
     const startDate = searchParams.get('start_date')
     const endDate = searchParams.get('end_date')
-    
-    // Build query
+
+    // Build query — inventory_transactions has no brand_id of its own,
+    // scoped transitively through the (inner-joined) product's brand_id.
     let query = supabase
       .from('inventory_transactions')
       .select(`
         *,
-        products (
+        products!inner (
           id,
           sku,
           name,
-          image_url
+          image_url,
+          brand_id
         )
       `, { count: 'exact' })
-    
+      .eq('products.brand_id', admin.brand_id)
+
     // Apply filters
     if (productId) {
       query = query.eq('product_id', productId)
@@ -60,13 +64,13 @@ export async function GET(request: NextRequest) {
     // Apply pagination and sorting
     const { data: transactions, error, count } = await query
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-    
+      .range(from, to)
+
     if (error) {
       throw error
     }
-    
-    const pagination = calculatePagination(count || 0, page, limit)
+
+    const pagination = calculatePagination(count || 0, page, perPage)
     
     return apiSuccess({ transactions, pagination })
     
@@ -82,20 +86,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
-    
+
     // Validate required fields
     if (!body.product_id || !body.transaction_type || body.quantity_change === undefined) {
       return apiError('Missing required fields: product_id, transaction_type, quantity_change', 'VALIDATION_ERROR', 400)
     }
-    
-    // Fetch current product stock
+
+    // Fetch current product stock — scoped to admin's own brand, so a
+    // request can't adjust another brand's product stock by ID.
     const { data: product, error: productError } = await supabase
       .from('products')
       .select('stock_quantity, low_stock_threshold')
       .eq('id', body.product_id)
+      .eq('brand_id', admin.brand_id)
       .single()
     
     if (productError || !product) {
@@ -121,7 +127,8 @@ export async function POST(request: NextRequest) {
         quantity_after: quantityAfter,
         reference_type: body.reference_type || 'manual',
         reference_id: body.reference_id || null,
-        notes: body.notes || null
+        notes: body.notes || null,
+        created_by: admin.id
       })
       .select()
       .single()
@@ -145,6 +152,7 @@ export async function POST(request: NextRequest) {
         stock_status: stockStatus
       })
       .eq('id', body.product_id)
+      .eq('brand_id', admin.brand_id)
     
     if (updateError) {
       console.error('[INVENTORY API] Failed to update product stock:', updateError)

@@ -1,4 +1,4 @@
-// Mock data for the Teetoz platform
+// Mock data for the Pallet platform
 
 export const products = [
   {
